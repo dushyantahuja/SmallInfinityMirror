@@ -63,7 +63,7 @@ ESP8266HTTPUpdateServer httpUpdater;
 void setup() {
     // put your setup code here, to run once:
     delay(3000);
-    Serial.begin(74880);
+    Serial.begin(9600);
     FastLED.addLeds<WS2812B, 4, GRB>(leds, 60); //.setCorrection(TypicalLEDStrip);
     //FastLED.addLeds<WS2812B, 5, GRB>(hourleds, 12); //.setCorrection(TypicalLEDStrip);
     fill_palette(leds, NUM_LEDS, 0, 0, gCurrentPalette, 10, NOBLEND);
