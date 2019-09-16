@@ -10,6 +10,8 @@
 #include <ESP8266HTTPUpdateServer.h>
 #include <NTPClient.h>
 #include <ArduinoJson.h>
+#include <IPGeolocation.h>
+String IPGeoKey = "b294be4d4a3044d9a39ccf42a564592b";
 //#include <FS.h>
 
 #define FASTLED_INTERNAL
@@ -55,7 +57,7 @@ String message;
 // NTP Servers:
 
 WiFiUDP ntpUDP;
-NTPClient timeClient(ntpUDP, "europe.pool.ntp.org", 3600, 360000); //19800
+NTPClient timeClient(ntpUDP, "europe.pool.ntp.org", 0, 360000); //19800
 
 ESP8266WebServer httpServer(80);
 ESP8266HTTPUpdateServer httpUpdater;
@@ -91,6 +93,10 @@ void setup() {
     //httpServer.on("/time", handleRoot);
     httpServer.onNotFound(handleNotFound);
     httpServer.begin();
+
+    IPGeolocation IPG(IPGeoKey);
+    IPG.updateStatus();
+    timeClient.setTimeOffset(IPG.getOffset()*3600);
 
     //MDNS.addService("http", "tcp", 80);
     timeClient.begin();
