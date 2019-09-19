@@ -44,7 +44,7 @@ void setup() {
     Serial.begin(9600);
     FastLED.addLeds<WS2812B, 4, GRB>(leds, 60).setCorrection(TypicalLEDStrip);
     //FastLED.setBrightness(constrain(config.light_high,10,255));
-    fill_solid(leds, NUM_LEDS, CRGB::MediumVioletRed);
+    fill_solid(leds, NUM_LEDS, CRGB::DarkKhaki);
     //fill_solid(hourleds, 12, bg);
     FastLED.show();
 
@@ -72,11 +72,11 @@ void setup() {
         //Serial.println("admin.html");
         httpServer.send ( 200, "text/html", FPSTR(PAGE_AdminMainPage) );  // const char top of page
     }  );
-    httpServer.on ( "style.css", []() {
+    httpServer.on ( "/style.css", []() {
         //Serial.println("style.css");
         httpServer.send ( 200, "text/plain", FPSTR(PAGE_Style_css) );
       } );
-    httpServer.on ( "microajax.js", []() {
+    httpServer.on ( "/microajax.js", []() {
         //Serial.println("microajax.js");
         httpServer.send ( 200, "text/plain", FPSTR(PAGE_microajax_js) );
       } );
@@ -93,7 +93,7 @@ void setup() {
 
     EEPROM.begin(512);
 
-    if (EEPROM.read(109) != 13) saveDefaults();
+    if (EEPROM.read(109) != 4) saveDefaults();
     // Else read the parameters from the EEPROM
     else loadDefaults();
 

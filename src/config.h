@@ -12,8 +12,8 @@ void showTime(int hr, int mn, int sec);
 
 const TProgmemRGBGradientPalettePtr gGradientPalettes[] = {
   es_emerald_dragon_08_gp,
-  plain_blue,
   Magenta_Evening_gp,
+  plain_blue,
   blues_gp,
   nsa_gp
 };
@@ -97,7 +97,10 @@ bool saveDefaults(){
       EEPROM.write(15, 2);                    // Current Palette
       EEPROM.write(16,22);                    // Switch Off
       EEPROM.write(17,7);                     // Switch On
-      EEPROM.write(109,13);
+      EEPROM.write(18,64);                     //lines colour
+      EEPROM.write(19,64);
+      EEPROM.write(20,50);
+      EEPROM.write(109,4);
       EEPROM.commit();
     }
     return true;
@@ -117,6 +120,9 @@ bool loadDefaults()
       bg.r = EEPROM.read(9);
       bg.g = EEPROM.read(10);
       bg.b = EEPROM.read(11);
+      lines.r = EEPROM.read(18);
+      lines.g = EEPROM.read(19);
+      lines.b = EEPROM.read(20);
       config.light_low = EEPROM.read(12);
       config.light_high = EEPROM.read(13);
       config.rain = EEPROM.read(14);
@@ -125,63 +131,3 @@ bool loadDefaults()
       config.switch_on = EEPROM.read(17);
       return true;
     }
-
-/*
-bool  saveConfig ( )  { 
-  StaticJsonBuffer < 200 >  jsonBuffer ; 
-  JsonObject &  json  =  jsonBuffer . createObject ( ) ; 
-  json [ "serverName" ]  =  "api.example.com" ; 
-  json [ "accessToken" ]  =  "128du9as8du12eoue8da98h123ueh9h98" ;
-
-  File  configFile  =  SPIFFS . open ( "/config.json" ,  "w" ) ; 
-  if  ( ! configFile )  { 
-    Serial . println ( "Failed to open config file for writing" ) ; 
-    return  false ; 
-  }
-
-  json . printTo ( configFile ) ; 
-  return  true ; 
-}
-
-bool  loadConfig ( )  { 
-  File  configFile  =  SPIFFS . open ( "/config.json" ,  "r" ) ; 
-  if  ( ! configFile )  { 
-    Serial . println ( "Failed to open config file" ) ; 
-    return  false ; 
-  }
-
-  size_t  size  =  configFile . size ( ) ; 
-  if  ( size  >  1024 )  { 
-    Serial . println ( "Config file size is too large" ) ; 
-    return  false ; 
-  }
-
-  // Allocate a buffer to store contents of the file. 
-  std : : unique_ptr < char [ ] >  buf ( new  char [ size ] ) ;
-
-  // We don't use String here because ArduinoJson library requires the input 
-  // buffer to be mutable. If you don't use ArduinoJson, you may as well 
-  // use configFile.readString instead. 
-  configFile . readBytes ( buf . get ( ) ,  size ) ;
-
-  StaticJsonBuffer < 200 >  jsonBuffer ; 
-  JsonObject &  json  =  jsonBuffer . parseObject ( buf . get ( ) ) ;
-
-  if  ( ! json . success ( ) )  { 
-    Serial . println ( "Failed to parse config file" ) ; 
-    return  false ; 
-  }
-
-  const  char *  serverName  =  json [ "serverName" ] ; 
-  const  char *  accessToken  =  json [ "accessToken" ] ;
-
-  // Real world application would store these values ​​in some variables for 
-  // later use.
-
-  Serial . print ( "Loaded serverName:" ) ; 
-  Serial . println ( serverName ) ; 
-  Serial . print ( "Loaded accessToken:" ) ; 
-  Serial . println ( accessToken ) ; 
-  return  true ; 
-}
-*/

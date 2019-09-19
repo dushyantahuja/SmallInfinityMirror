@@ -7,10 +7,10 @@ const char PAGE_ClockConfiguration[] PROGMEM = R"=====(
 <a href="/"  class="btn btn--s"><</a>&nbsp;&nbsp;<strong>Clock Configuration</strong>
 <hr>
 Configuration:<br>
-<form action="/admin" method="get">
+<form action="/clock.html" method="get">
 <table border="0"  cellspacing="0" cellpadding="3" style="width:400px" >
-<tr><td align="right">Daytime Brightness (0-255):</td><td><input type="text" id="light_high" name="light_high" value=""></td></tr>
-<tr><td align="right">Nighttime Brightness (0-255):</td><td><input type="text" id="light_low" name="light_low" value=""></td></tr>
+<tr><td align="right">Daytime Brightness (0-255):</td><td><input type="number" id="light_high" name="light_high" value="" min="0" max="255"></td></tr>
+<tr><td align="right">Nighttime Brightness (0-255):</td><td><input type="number" id="light_low" name="light_low" value="" min="0" max="255"></td></tr>
 <tr><td colspan="2" align="center"><input type="submit" style="width:150px" class="btn btn--m btn--blue" value="Save"></td></tr>
 </table>
 </form>
@@ -25,7 +25,7 @@ window.onload = function ()
   {
     load("microajax.js","js", function() 
     {
-        setValues("/admin/ntpvalues");
+        setValues("/admin/clockconfig");
     });
   });
 }
