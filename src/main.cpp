@@ -4,15 +4,16 @@
 #include <ESP8266WebServer.h>
 #include <WiFiManager.h>
 #include <ESP8266mDNS.h>
-//#include <TimeLib.h>
-#include <WiFiUdp.h>
+//#include <WiFiUdp.h>
 //#include <PubSubClient.h>
 #include <ESP8266HTTPUpdateServer.h>
+ESP8266WebServer httpServer(80);
+ESP8266HTTPUpdateServer httpUpdater;
+
 #include <NTPClient.h>
 #include <ArduinoJson.h>
 #include <IPGeolocation.h>
 String IPGeoKey = "b294be4d4a3044d9a39ccf42a564592b";
-//#include <FS.h>
 
 #define FASTLED_INTERNAL
 //#define FASTLED_ESP8266_RAW_PIN_ORDER
@@ -21,36 +22,14 @@ String IPGeoKey = "b294be4d4a3044d9a39ccf42a564592b";
 #include "FastLED.h"
 #include "EEPROM.h"
 
-#include "config.h"
-
-#define NUM_LEDS 60
-#define DATA_PIN D2
-#define UPDATES_PER_SECOND 35
-//#define MQTT_MAX_PACKET_SIZE 256
-
-
 #include "palette.h"
-const TProgmemRGBGradientPalettePtr gGradientPalettes[] = {
-  es_emerald_dragon_08_gp,
-  Magenta_Evening_gp,
-  blues_gp,
-  nsa_gp
-};
-// Count of how many cpt-city gradients are defined:
-const uint8_t gGradientPaletteCount =
-  sizeof( gGradientPalettes) / sizeof( TProgmemRGBGradientPalettePtr );
-// Current palette number from the 'playlist' of color palettes
-uint8_t gCurrentPaletteNumber = 1;
+#include "config.h"
+#include "Page_Script.js.h"
+#include "Page_Style.css.h"
+#include "Page_Admin.h"
+#include "Page_ClockConfiguration.h"
 
-CRGBPalette16 gCurrentPalette( gGradientPalettes[gCurrentPaletteNumber]);
-
-CRGBArray<NUM_LEDS> leds; //,led2;
-//CRGBArray<12> hourleds;
-CRGB minutes,hours,seconds,l,bg,lines;
-int light_low, light_high;
-boolean missed=0, ledState = 1,  multieffects = 0; //lastsec=1,
-byte  rain; //lastsecond,
-String message;
+//#define MQTT_MAX_PACKET_SIZE 256
 //void callback(const MQTT::Publish& pub);
 
 
@@ -59,29 +38,23 @@ String message;
 WiFiUDP ntpUDP;
 NTPClient timeClient(ntpUDP, "europe.pool.ntp.org", 0, 360000); //19800
 
-ESP8266WebServer httpServer(80);
-ESP8266HTTPUpdateServer httpUpdater;
-
 void setup() {
     // put your setup code here, to run once:
     delay(3000);
     Serial.begin(9600);
-    FastLED.addLeds<WS2812B, 4, GRB>(leds, 60); //.setCorrection(TypicalLEDStrip);
-    //FastLED.addLeds<WS2812B, 5, GRB>(hourleds, 12); //.setCorrection(TypicalLEDStrip);
-    fill_palette(leds, NUM_LEDS, 0, 0, gCurrentPalette, 10, NOBLEND);
-    //fill_palette(hourleds, 12, 0, 0, gCurrentPalette, 10, NOBLEND);
-    FastLED.setBrightness(constrain(light_high,10,255));
-    //reverseLEDs();
+    FastLED.addLeds<WS2812B, 4, GRB>(leds, 60).setCorrection(TypicalLEDStrip);
+    //FastLED.setBrightness(constrain(config.light_high,10,255));
+    fill_solid(leds, NUM_LEDS, CRGB::MediumVioletRed);
+    //fill_solid(hourleds, 12, bg);
     FastLED.show();
+
+    //reverseLEDs();
     Serial.println("Wifi Setup Initiated");
-    //delay(1000);
-    WiFi.setAutoConnect ( true );
+    WiFi.setAutoConnect(true);
     WiFi.setSleepMode(WIFI_NONE_SLEEP);
     WiFiManager wifiManager;
     //wifiManager.resetSettings();
-    //wifiManager.setConfigPortalTimeout(180);
     wifiManager.setTimeout(180);
-    //wifiManager.setConnectTimeout(120);
     if(!wifiManager.autoConnect("smallinfinityClock")) {
       delay(3000);
       ESP.reset();
@@ -89,9 +62,26 @@ void setup() {
       }
     Serial.println("Wifi Setup Completed");
     MDNS.begin("smallinfinityclock");
+
+
     httpUpdater.setup(&httpServer);
     //httpServer.on("/time", handleRoot);
     httpServer.onNotFound(handleNotFound);
+    // Admin page
+    httpServer.on ( "/", []() {
+        //Serial.println("admin.html");
+        httpServer.send ( 200, "text/html", FPSTR(PAGE_AdminMainPage) );  // const char top of page
+    }  );
+    httpServer.on ( "style.css", []() {
+        //Serial.println("style.css");
+        httpServer.send ( 200, "text/plain", FPSTR(PAGE_Style_css) );
+      } );
+    httpServer.on ( "microajax.js", []() {
+        //Serial.println("microajax.js");
+        httpServer.send ( 200, "text/plain", FPSTR(PAGE_microajax_js) );
+      } );
+    httpServer.on ( "/clock.html", send_clock_configuration_html );
+    httpServer.on ( "/admin/clockconfig", send_clock_configuration_values_html );
     httpServer.begin();
 
     IPGeolocation IPG(IPGeoKey);
@@ -103,67 +93,14 @@ void setup() {
 
     EEPROM.begin(512);
 
-    if (EEPROM.read(109) != 2){               // Check if colours have been set or not
-
-      seconds.r = 0;
-      seconds.g = 0;
-      seconds.b = 0;
-      minutes.r = 10;
-      minutes.g = 44;
-      minutes.b = 53;
-      hours.r = 210;
-      hours.g = 45;
-      hours.b = 0;
-      bg.r = 0;
-      bg.g = 0;
-      bg.b = 0;
-      light_low = 0;
-      light_high = 65;
-      rain = 30;
-      gCurrentPaletteNumber = 2;
-
-      EEPROM.write(0,0);                   // Seconds Colour
-      EEPROM.write(1,0);
-      EEPROM.write(2,0);
-      EEPROM.write(3,10);                   // Minutes Colour
-      EEPROM.write(4,44);
-      EEPROM.write(5,53);
-      EEPROM.write(6,210);                     // Hours Colour
-      EEPROM.write(7,45);
-      EEPROM.write(8,0);
-      EEPROM.write(9,0);                     // BG Colour
-      EEPROM.write(10,0);
-      EEPROM.write(11,0);
-      EEPROM.write(12, 0);                   // Light sensitivity - low
-      EEPROM.write(13, 65);                  // Light sensitivity - high
-      EEPROM.write(14, 30);                  // Minutes for each rainbow
-      EEPROM.write(15, 2);                    // Current Palette
-      EEPROM.write(109,2);
-      EEPROM.commit();
-    }
+    if (EEPROM.read(109) != 13) saveDefaults();
     // Else read the parameters from the EEPROM
-    else {
-      seconds.r = EEPROM.read(0);
-      seconds.g = EEPROM.read(1);
-      seconds.b = EEPROM.read(2);
-      minutes.r = EEPROM.read(3);
-      minutes.g = EEPROM.read(4);
-      minutes.b = EEPROM.read(5);
-      hours.r = EEPROM.read(6);
-      hours.g = EEPROM.read(7);
-      hours.b = EEPROM.read(8);
-      bg.r = EEPROM.read(9);
-      bg.g = EEPROM.read(10);
-      bg.b = EEPROM.read(11);
-      light_low = EEPROM.read(12);
-      light_high = EEPROM.read(13);
-      rain = EEPROM.read(14);
-      gCurrentPaletteNumber = EEPROM.read(15);
-    }
+    else loadDefaults();
+
     fill_solid(leds, NUM_LEDS, bg);
-    //fill_solid(hourleds, 12, bg);
     FastLED.show();
-    gCurrentPalette = gGradientPalettes[gCurrentPaletteNumber];
+    gCurrentPalette = gGradientPalettes[config.gCurrentPaletteNumber];
+    wdt_enable(WDTO_8S);
 }
 
 void loop() {
@@ -177,7 +114,7 @@ void loop() {
 
 void showTime(int hr, int mn, int sec) {
   if(sec==0) fill_solid(leds, NUM_LEDS, bg);
-  if(( mn % rain == 0 && sec == 0)){
+  if(( mn % config.rain == 0 && sec == 0)){
        effects();
     }
   colorwaves( leds, mn, gCurrentPalette);
@@ -187,12 +124,12 @@ void showTime(int hr, int mn, int sec) {
   if(hr%12*5-1 > 0)
     leds[hr%12*5-1]=hours;
   else leds[59]=hours; for(byte i = 0; i<60; i+=5){
-    leds[i]= CRGB(20,30,0); //CRGB(64,64,50);
+    leds[i]= lines;  // CRGB(20,30,0); //CRGB(64,64,50);
   }
-  if(hr < 7 || hr >= 22)
-    LEDS.setBrightness(constrain(0,0,100)); // Set brightness to light_low during night - cools down LEDs and power supplies.
+  if(hr < config.switch_on || hr >= config.switch_off)
+    LEDS.setBrightness(constrain(0,config.light_low,100)); // Set brightness to light_low during night - cools down LEDs and power supplies.
   else
-    LEDS.setBrightness(constrain(light_high,10,255));
+    LEDS.setBrightness(constrain(config.light_high,10,255));
 }
 
 /*void callback(const MQTT::Publish& pub) {
