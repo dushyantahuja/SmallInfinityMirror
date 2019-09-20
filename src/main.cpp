@@ -74,15 +74,15 @@ void setup() {
         httpServer.send ( 200, "text/html", FPSTR(PAGE_AdminMainPage) );  // const char top of page
     }  );
     httpServer.on ( "/style.css", []() {
-        //Serial.println("style.css");
+        Serial.println("style.css");
         httpServer.send ( 200, "text/plain", FPSTR(PAGE_Style_css) );
       } );
     httpServer.on ( "/microajax.js", []() {
-        //Serial.println("microajax.js");
+        Serial.println("microajax.js");
         httpServer.send ( 200, "text/plain", FPSTR(PAGE_microajax_js) );
       } );
     httpServer.on ( "/jscolor.js", []() {
-        //Serial.println("microajax.js");
+        Serial.println("jscolor.js");
         httpServer.send ( 200, "text/plain", FPSTR(PAGE_jscolor_js) );
       } );
     httpServer.on ( "/clock.html", send_clock_configuration_html );

@@ -4,17 +4,16 @@
 const char Page_ColorConfiguration[] PROGMEM = R"=====(
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-<script src="jscolor.js"></script>
-<a href="/"  class="btn btn--s"><</a>&nbsp;&nbsp;<strong>Clock Configuration</strong>
+<script src="/jscolor.js"></script>
+<a href="/"  class="btn btn--s"><</a>&nbsp;&nbsp;<strong>Choose Colors</strong>
 <hr>
 Configuration:<br>
-<form action="/clock.html" method="get">
+<form action="/color.html" method="get">
 <table border="0"  cellspacing="0" cellpadding="3" style="width:500px" >
-<tr><td align="right">Daytime Brightness (0-255):</td><td><input type="number" id="light_high" name="light_high" value="" min="0" max="255"></td></tr>
-<tr><td align="right">Nighttime Brightness (0-255):</td><td><input type="number" id="light_low" name="light_low" value="" min="0" max="255"></td></tr>
-<tr><td align="right">Time to Switch On (0-12):</td><td><input type="number" id="switch_on" name="switch_on" value="" min="0" max="12"></td></tr>
-<tr><td align="right">Time to Switch Off (13-23):</td><td><input type="number" id="switch_off" name="switch_off" value="" min="13" max="23"></td></tr>
-<tr><td align="right">Effects every n minutes:</td><td><input type="number" id="rain" name="rain" value="" min="0" max="59"></td></tr>
+<tr><td align="right">Hour</td><td><input name="hours" type="jscolor" class="jscolor" value=""></td></tr>
+<tr><td align="right">Minute</td><td><input name="minutes" type="jscolor" class="jscolor" value=""></td></tr>
+<tr><td align="right">Seconds</td><td><input name="seconds" type="jscolor" class="jscolor" value=""></td></tr>
+<tr><td align="right">5 Min Markers</td><td><input name="lines" type="jscolor" class="jscolor" value=""></td></tr>
 <tr><td colspan="2" align="center"><input type="submit" style="width:150px" class="btn btn--m btn--blue" value="Save"></td></tr>
 </table>
 </form>
@@ -29,7 +28,7 @@ window.onload = function ()
   {
     load("microajax.js","js", function() 
     {
-        setValues("/admin/clockconfig");
+        setValues("/admin/colorconfig");
     });
   });
 }
@@ -48,46 +47,53 @@ void send_color_configuration_html()
   {
     String temp = "";
     for ( uint8_t i = 0; i < httpServer.args(); i++ ) {
-      if (httpServer.argName(i) == "light_high") {
-          config.light_high = httpServer.arg(i).toInt();
-          EEPROM.write(13, config.light_high);  
+      if (httpServer.argName(i) == "hours") {
+          hours = strtol(httpServer.arg(i).c_str(), NULL, 16);
+          EEPROM.write(6,hours.r);                     
+          EEPROM.write(7,hours.g);
+          EEPROM.write(8,hours.b); 
           EEPROM.commit();
       }
-      if (httpServer.argName(i) == "light_low") {
-        config.light_low =  httpServer.arg(i).toInt(); 
-        EEPROM.write(13, config.light_high);  
+      if (httpServer.argName(i) == "minutes") {
+          minutes = strtol(httpServer.arg(i).c_str(), NULL, 16);
+          EEPROM.write(3,minutes.r);                     
+          EEPROM.write(4,minutes.g);
+          EEPROM.write(5,minutes.b); 
           EEPROM.commit();
       }
-      if (httpServer.argName(i) == "switch_off") {
-          config.switch_off = httpServer.arg(i).toInt();
-          EEPROM.write(16, config.switch_off);  
+      if (httpServer.argName(i) == "seconds") {
+          seconds = strtol(httpServer.arg(i).c_str(), NULL, 16);
+          EEPROM.write(0,seconds.r);                     
+          EEPROM.write(1,seconds.g);
+          EEPROM.write(2,seconds.b); 
           EEPROM.commit();
       }
-      if (httpServer.argName(i) == "switch_on") {
-          config.switch_on = httpServer.arg(i).toInt();
-          EEPROM.write(17, config.switch_on);  
-          EEPROM.commit();
-      }
-      if (httpServer.argName(i) == "rain") {
-          config.rain = httpServer.arg(i).toInt();
-          EEPROM.write(14, config.rain);  
+      if (httpServer.argName(i) == "lines") {
+          lines = strtol(httpServer.arg(i).c_str(), NULL, 16);
+          EEPROM.write(18,lines.r);                     
+          EEPROM.write(19,lines.g);
+          EEPROM.write(20,lines.b); 
           EEPROM.commit();
       }
     }
   }
-  httpServer.send ( 200, "text/html", FPSTR(PAGE_ClockConfiguration) ); 
+  httpServer.send ( 200, "text/html", FPSTR(Page_ColorConfiguration) ); 
   //Serial.println(__FUNCTION__); 
 }
 
 void send_color_configuration_values_html()
 {
-	
+  long HexRGB; 
   String values ="";
-  values += "light_high|" + String(config.light_high) + "|input\n";
-  values += "light_low|" +  String(config.light_low) + "|input\n";
-  values += "switch_off|" +  String(config.switch_off) + "|input\n";
-  values += "switch_on|" +  String(config.switch_on) + "|input\n";
-  values += "rain|" +  String(config.rain) + "|input\n";
+  HexRGB = ((long)hours.r << 16) | ((long)hours.g << 8 ) | (long)hours.b;
+  values += "hours|" + String(HexRGB, HEX) + "|input\n";
+  HexRGB = ((long)minutes.r << 16) | ((long)minutes.g << 8 ) | (long)minutes.b;
+  values += "minutes|" +  String(HexRGB, HEX) + "|input\n";
+  HexRGB = ((long)seconds.r << 16) | ((long)seconds.g << 8 ) | (long)seconds.b;
+  values += "seconds|" +  String(HexRGB, HEX) + "|input\n";
+  HexRGB = ((long)lines.r << 16) | ((long)lines.g << 8 ) | (long)lines.b;
+  values += "lines|" +  String(HexRGB, HEX) + "|input\n";
+  //values += "rain|" +  String(HexRGB, HEX)) + "|input\n";
   httpServer.send ( 200, "text/plain", values);
   //Serial.println(__FUNCTION__); 
 }
