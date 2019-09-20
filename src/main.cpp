@@ -28,6 +28,7 @@ String IPGeoKey = "b294be4d4a3044d9a39ccf42a564592b";
 #include "Page_Style.css.h"
 #include "Page_Admin.h"
 #include "Page_ClockConfiguration.h"
+#include "Page_ColorConfiguration.h"
 
 //#define MQTT_MAX_PACKET_SIZE 256
 //void callback(const MQTT::Publish& pub);
@@ -43,8 +44,8 @@ void setup() {
     delay(3000);
     Serial.begin(9600);
     FastLED.addLeds<WS2812B, 4, GRB>(leds, 60).setCorrection(TypicalLEDStrip);
-    //FastLED.setBrightness(constrain(config.light_high,10,255));
-    fill_solid(leds, NUM_LEDS, CRGB::DarkKhaki);
+    FastLED.setBrightness(20);
+    fill_solid(leds, NUM_LEDS, CRGB::DarkRed);
     //fill_solid(hourleds, 12, bg);
     FastLED.show();
 
@@ -80,8 +81,14 @@ void setup() {
         //Serial.println("microajax.js");
         httpServer.send ( 200, "text/plain", FPSTR(PAGE_microajax_js) );
       } );
+    httpServer.on ( "/jscolor.js", []() {
+        //Serial.println("microajax.js");
+        httpServer.send ( 200, "text/plain", FPSTR(PAGE_jscolor_js) );
+      } );
     httpServer.on ( "/clock.html", send_clock_configuration_html );
     httpServer.on ( "/admin/clockconfig", send_clock_configuration_values_html );
+    httpServer.on ( "/color.html", send_color_configuration_html );
+    httpServer.on ( "/admin/colorconfig", send_color_configuration_values_html );
     httpServer.begin();
 
     IPGeolocation IPG(IPGeoKey);
