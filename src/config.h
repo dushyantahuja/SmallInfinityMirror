@@ -1,20 +1,24 @@
 #define NUM_LEDS 60
 #define DATA_PIN D2
 #define UPDATES_PER_SECOND 35
-#define GET_VARIABLE_NAME(Variable) (#Variable)
+#define GET_VARIABLE_NAME(Variable) (#Variable).cstr()
 
 // Function Definitions
 
-void handleNotFound();
+void handleNotFound(AsyncWebServerRequest *request);
 void colorwaves( CRGB* ledarray, uint16_t numleds, CRGBPalette16& palette);
 void effects();
 void showTime(int hr, int mn, int sec);
-
+String send_color_configuration_values_html(const String& var);
+void send_clock_configuration_html(AsyncWebServerRequest *request);
+void send_clock_configuration_values_html(AsyncWebServerRequest *request);
+void send_color_configuration_html(AsyncWebServerRequest *request);
+void handleUpdate(AsyncWebServerRequest *request);
+void handleDoUpdate(AsyncWebServerRequest *request, const String& filename, size_t index, uint8_t *data, size_t len, bool final);
 
 const TProgmemRGBGradientPalettePtr gGradientPalettes[] = {
   es_emerald_dragon_08_gp,
   Magenta_Evening_gp,
-  plain_blue,
   blues_gp,
   nsa_gp
 };
@@ -132,3 +136,49 @@ bool loadDefaults()
       config.switch_on = EEPROM.read(17);
       return true;
     }
+
+// Code from https://github.com/lbernstone/asyncUpdate/blob/master/AsyncUpdate.ino
+
+void handleUpdate(AsyncWebServerRequest *request) {
+  char* html = "<form method='POST' action='/doUpdate' enctype='multipart/form-data'><input type='file' name='update'><input type='submit' value='Update'></form>";
+  request->send(200, "text/html", html);
+}
+
+void handleDoUpdate(AsyncWebServerRequest *request, const String& filename, size_t index, uint8_t *data, size_t len, bool final) {
+  if (!index){
+    Serial.println("Update");
+    size_t content_len = request->contentLength();
+    // if filename includes spiffs, update the spiffs partition
+    int cmd = (filename.indexOf("spiffs") > -1) ? U_SPIFFS : U_FLASH;
+#ifdef ESP8266
+    Update.runAsync(true);
+    if (!Update.begin(content_len, cmd)) {
+#else
+    if (!Update.begin(UPDATE_SIZE_UNKNOWN, cmd)) {
+#endif
+      Update.printError(Serial);
+    }
+  }
+
+  if (Update.write(data, len) != len) {
+    Update.printError(Serial);
+#ifdef ESP8266
+  } else {
+    //Serial.printf("Progress: %d%%\n", (Update.progress()*100)/Update.size());
+#endif
+  }
+
+  if (final) {
+    AsyncWebServerResponse *response = request->beginResponse(302, "text/plain", "Please wait while the device reboots");
+    response->addHeader("Refresh", "25");  
+    response->addHeader("Location", "/");
+    request->send(response);
+    if (!Update.end(true)){
+      Update.printError(Serial);
+    } else {
+      Serial.println("Update complete");
+      Serial.flush();
+      ESP.restart();
+    }
+  }
+}

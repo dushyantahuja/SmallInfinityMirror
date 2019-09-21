@@ -1,15 +1,15 @@
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
 <script src="jscolor.js"></script>
-<a href=""  class="btn btn--s"><</a>&nbsp;&nbsp;<strong>Choose Colors</strong>
+<a href="/"  class="btn btn--s"><</a>&nbsp;&nbsp;<strong>Choose Colors</strong>
 <hr>
 Configuration:<br>
-<form action="color.html" method="get">
+<form action="/color.html" method="get">
 <table border="0"  cellspacing="0" cellpadding="3" style="width:500px" >
-<tr><td align="right">Hour</td><td><input name="hours" class="jscolor {onFineChange:'update(this)'}" value=""></td></tr>
-<tr><td align="right">Minute</td><td><input name="minutes" class="jscolor" value=""></td></tr>
-<tr><td align="right">Seconds</td><td><input name="seconds" class="jscolor" value=""></td></tr>
-<tr><td align="right">5 Min Markers</td><td><input name="lines" class="jscolor" value=""></td></tr>
+<tr><td align="right">Hour</td><td><input name="hours" class="jscolor" value="%__hours__%"></td></tr>
+<tr><td align="right">Minute</td><td><input name="minutes" class="jscolor" value="%__minutes__%"></td></tr>
+<tr><td align="right">Seconds</td><td><input name="seconds" class="jscolor" value="%__seconds__%"></td></tr>
+<tr><td align="right">5 Min Markers</td><td><input name="lines" class="jscolor" value="%__lines__%"></td></tr>
 <tr><td colspan="2" align="center"><input type="submit" style="width:150px" class="btn btn--m btn--blue" value="Save"></td></tr>
 </table>
 </form>
@@ -24,7 +24,7 @@ window.onload = function ()
   {
     load("microajax.js","js", function()
     {
-        setValues("colorconfig");
+        setValues("/admin/colorconfig");
     });
   });
 }

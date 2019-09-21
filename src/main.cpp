@@ -1,14 +1,21 @@
 #include "Arduino.h"
+#include <FS.h>
 #include <ESP8266WiFi.h>
 #include <DNSServer.h>
-#include <ESP8266WebServer.h>
-#include <WiFiManager.h>
+#include <ESPAsyncTCP.h>
+#include <ESPAsyncWebServer.h>
+#include <Updater.h>
+
+//#include <ESP8266WebServer.h>
+#include <ESPAsyncWiFiManager.h>
 #include <ESP8266mDNS.h>
 //#include <WiFiUdp.h>
 //#include <PubSubClient.h>
-#include <ESP8266HTTPUpdateServer.h>
-ESP8266WebServer httpServer(80);
-ESP8266HTTPUpdateServer httpUpdater;
+//#include <ESP8266HTTPUpdateServer.h>
+
+AsyncWebServer httpServer(80);
+DNSServer dns;
+//ESP8266HTTPUpdateServer httpUpdater;
 
 #include <NTPClient.h>
 #include <ArduinoJson.h>
@@ -24,11 +31,9 @@ String IPGeoKey = "b294be4d4a3044d9a39ccf42a564592b";
 
 #include "palette.h"
 #include "config.h"
-#include "Page_Script.js.h"
-#include "Page_Style.css.h"
+
 #include "Page_Admin.h"
-#include "Page_ClockConfiguration.h"
-#include "Page_ColorConfiguration.h"
+
 
 //#define MQTT_MAX_PACKET_SIZE 256
 //void callback(const MQTT::Publish& pub);
@@ -45,15 +50,19 @@ void setup() {
     Serial.begin(9600);
     FastLED.addLeds<WS2812B, 4, GRB>(leds, 60).setCorrection(TypicalLEDStrip);
     FastLED.setBrightness(20);
-    fill_solid(leds, NUM_LEDS, CRGB::DarkRed);
+    fill_rainbow(leds, NUM_LEDS,4);
     //fill_solid(hourleds, 12, bg);
     FastLED.show();
-
+    if(!SPIFFS.begin()){
+      Serial.println("An Error has occurred while mounting SPIFFS");
+      return;
+    }
     //reverseLEDs();
     Serial.println("Wifi Setup Initiated");
     WiFi.setAutoConnect(true);
     WiFi.setSleepMode(WIFI_NONE_SLEEP);
-    WiFiManager wifiManager;
+    AsyncWiFiManager wifiManager(&httpServer,&dns);
+    //WiFiManager wifiManager;
     //wifiManager.resetSettings();
     wifiManager.setTimeout(180);
     if(!wifiManager.autoConnect("smallinfinityClock")) {
@@ -65,30 +74,36 @@ void setup() {
     MDNS.begin("smallinfinityclock");
 
 
-    httpUpdater.setup(&httpServer);
+    //httpUpdater.setup(&httpServer);
     //httpServer.on("/time", handleRoot);
-    httpServer.onNotFound(handleNotFound);
     // Admin page
-    httpServer.on ( "/", []() {
-        //Serial.println("admin.html");
-        httpServer.send ( 200, "text/html", FPSTR(PAGE_AdminMainPage) );  // const char top of page
-    }  );
-    httpServer.on ( "/style.css", []() {
-        Serial.println("style.css");
-        httpServer.send ( 200, "text/plain", FPSTR(PAGE_Style_css) );
-      } );
-    httpServer.on ( "/microajax.js", []() {
-        Serial.println("microajax.js");
-        httpServer.send ( 200, "text/plain", FPSTR(PAGE_microajax_js) );
-      } );
-    httpServer.on ( "/jscolor.js", []() {
-        Serial.println("jscolor.js");
-        httpServer.send ( 200, "text/plain", FPSTR(PAGE_jscolor_js) );
-      } );
-    httpServer.on ( "/clock.html", send_clock_configuration_html );
-    httpServer.on ( "/admin/clockconfig", send_clock_configuration_values_html );
-    httpServer.on ( "/color.html", send_color_configuration_html );
-    httpServer.on ( "/admin/colorconfig", send_color_configuration_values_html );
+    httpServer.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
+        request ->send_P(200,"text/html", PAGE_AdminMainPage ); 
+    });
+    httpServer.on("/style.css", HTTP_GET, [](AsyncWebServerRequest *request){
+        request ->send(SPIFFS, "/www/style.css" ); 
+        //request->send(SPIFFS,"/www/style.css","text/css");
+    });
+    httpServer.on("/microajax.js", HTTP_GET, [](AsyncWebServerRequest *request){
+        request ->send(SPIFFS,"/www/microajax.js");
+    });
+    httpServer.on("/jscolor.js", HTTP_GET, [](AsyncWebServerRequest *request){
+        request ->send(SPIFFS,"/www/jscolor.js");
+    });
+    httpServer.on("/clock.html", HTTP_GET, send_clock_configuration_html);
+    httpServer.on("/color.html", HTTP_GET, send_color_configuration_html);
+    httpServer.on("/admin/clockconfig", HTTP_GET, send_clock_configuration_values_html);
+    //httpServer.on("/admin/colorconfig", HTTP_GET, send_color_configuration_values_html);
+    httpServer.on("/update", HTTP_GET, [](AsyncWebServerRequest *request){handleUpdate(request);});
+    httpServer.on("/doUpdate", HTTP_POST,
+    [](AsyncWebServerRequest *request) {},
+    [](AsyncWebServerRequest *request, const String& filename, size_t index, uint8_t *data,
+                  size_t len, bool final) {handleDoUpdate(request, filename, index, data, len, final);}
+    );
+    //httpServer.serveStatic("/", SPIFFS, "/www/");
+    /*
+    httpServer.on ( "/admin/colorconfig", send_color_configuration_values_html );*/
+    httpServer.onNotFound(handleNotFound);
     httpServer.begin();
 
     IPGeolocation IPG(IPGeoKey);
@@ -114,7 +129,7 @@ void loop() {
     timeClient.update();
     showTime(timeClient.getHours(),timeClient.getMinutes(),timeClient.getSeconds());
     FastLED.show();
-    httpServer.handleClient();
+    //httpServer.handleClient();
     FastLED.delay(1000 / UPDATES_PER_SECOND);
     yield();
 }
@@ -359,7 +374,7 @@ void colorwaves( CRGB* ledarray, uint16_t numleds, CRGBPalette16& palette)
 }*/
 
 
-void handleNotFound(){
+void handleNotFound(AsyncWebServerRequest *request){
   //digitalWrite(led, 1);
   message= "Time: ";
   message+= String(timeClient.getHours()) + ":" + String(timeClient.getMinutes())+ ":" + String(timeClient.getSeconds()) + "\n";
@@ -367,46 +382,20 @@ void handleNotFound(){
   message+= "SEC: " + String(seconds.r) + "-" + String(seconds.g) + "-" + String(seconds.b) +"\n";
   message+= "MINUTE: " + String(minutes.r) + "-" + String(minutes.g) + "-" + String(minutes.b) +"\n";
   message+= "HOUR: " + String(hours.r) + "-" + String(hours.g) + "-" + String(hours.b) +"\n";
-  /* message += "URI: ";
-  message += httpServer.uri();
+  message += "URI: ";
+  message += request->url();
   message += "\nMethod: ";
-  message += (httpServer.method() == HTTP_GET)?"GET":"POST";
+  message += (request->method() == HTTP_GET)?"GET":"POST";
   message += "\nArguments: ";
-  message += httpServer.args();
+  message += request->params();
   message += "\n";
-  for (uint8_t i=0; i<httpServer.args(); i++){
-    message += " " + httpServer.argName(i) + ": " + httpServer.arg(i) + "\n";
-  }*/
-  httpServer.send(404, "text/plain", message);
+  for (uint8_t i=0; i<request->params(); i++){
+    AsyncWebParameter* p = request->getParam(i);
+    message += " " + p->name() + ": " + p->value() + "\n";
+  }
+  request->send(404, "text/plain", message);
   //digitalWrite(led, 0);
 }
-
-// ----------------- Code to create a failsafe update
-
-/*void updateFailSafe()
-{
-  SPIFFS.begin();
-  Dir dir = SPIFFS.openDir("/");
-  File file = SPIFFS.open("/blinkESP.bin", "r");
-
-  uint32_t maxSketchSpace = (ESP.getFreeSketchSpace() - 0x1000) & 0xFFFFF000;
-  if (!Update.begin(maxSketchSpace, U_FLASH)) { //start with max available size
-    Update.printError(Serial);
-    Serial.println("ERROR");
-  }
-
-  while (file.available()) {
-    uint8_t ibuffer[128];
-    file.read((uint8_t *)ibuffer, 128);
-    Serial.println((char *)ibuffer);
-    Update.write(ibuffer, sizeof(ibuffer));
-  }
-
-  Serial.print(Update.end(true));
-  file.close();
-  delay(5000);
-  ESP.restart();
-}*/
 
 
 /*void reverseLeds() {
@@ -420,3 +409,126 @@ void handleNotFound(){
   for(int i=0; i< NUM_LEDS;i++)
     led2[i]=leds[i];
 }*/
+
+
+void send_clock_configuration_html(AsyncWebServerRequest *request)
+{
+  if (request->args() > 0 )  // Save Settings
+  {
+    //int args = request->args();
+    String temp = "";
+    if(request->hasParam("light_high")){
+      AsyncWebParameter* p = request->getParam("light_high");
+      config.light_high = p->value().toInt();
+          EEPROM.write(13, config.light_high);  
+          EEPROM.commit();
+    }
+    if(request->hasParam("light_low")){
+      AsyncWebParameter* p = request->getParam("light_low");
+      config.light_low = p->value().toInt();
+          EEPROM.write(12, config.light_low);  
+          EEPROM.commit();
+    }
+    if(request->hasParam("switch_off")){
+      AsyncWebParameter* p = request->getParam("switch_off");
+      config.switch_off = p->value().toInt();
+          EEPROM.write(16, config.switch_off);  
+          EEPROM.commit();
+    }
+    if(request->hasParam("switch_on")){
+      AsyncWebParameter* p = request->getParam("switch_on");
+      config.switch_on = p->value().toInt();
+          EEPROM.write(17, config.switch_on);  
+          EEPROM.commit();
+    }
+    if(request->hasParam("rain")){
+      AsyncWebParameter* p = request->getParam("rain");
+      config.rain = p->value().toInt();
+          EEPROM.write(14, config.rain);  
+          EEPROM.commit();
+    }
+  }
+  request ->send(SPIFFS, "/www/clock.html" ); 
+  //Serial.println(__FUNCTION__); 
+}
+
+
+void send_clock_configuration_values_html(AsyncWebServerRequest *request)
+{
+	
+  String values ="";
+  values += "light_high|" + String(config.light_high) + "|input\n";
+  values += "light_low|" +  String(config.light_low) + "|input\n";
+  values += "switch_off|" +  String(config.switch_off) + "|input\n";
+  values += "switch_on|" +  String(config.switch_on) + "|input\n";
+  values += "rain|" +  String(config.rain) + "|input\n";
+  request->send ( 200, "text/plain", values);
+  //Serial.println(__FUNCTION__); 
+}
+
+
+String send_color_configuration_values_html(const String& var)
+{
+  long HexRGB; 
+  String values ="";
+  HexRGB = ((long)hours.r << 16) | ((long)hours.g << 8 ) | (long)hours.b;
+  if(var == "__hours__") return (HexRGB == 0 ? "000000": String(HexRGB, HEX));
+  //Serial.println(HexRGB, HEX);
+  HexRGB = ((long)minutes.r << 16) | ((long)minutes.g << 8 ) | (long)minutes.b;
+  if(var == "__minutes__") return (HexRGB == 0 ? "000000": String(HexRGB, HEX));
+  //Serial.println(HexRGB, HEX);
+  HexRGB = ((long)seconds.r << 16) | ((long)seconds.g << 8 ) | (long)seconds.b;
+  if(var == "__seconds__") return (HexRGB == 0 ? "000000": String(HexRGB, HEX));
+  //Serial.println(HexRGB, HEX);
+  HexRGB = ((long)lines.r << 16) | ((long)lines.g << 8 ) | (long)lines.b;
+  if(var == "__lines__") return (HexRGB == 0 ? "000000": String(HexRGB, HEX));
+  //Serial.println(HexRGB, HEX);
+  //Serial.println(__FUNCTION__); 
+  return String();
+}
+
+void send_color_configuration_html(AsyncWebServerRequest *request)
+{
+  if (request->args() > 0 )  // Save Settings
+  {
+    //int args = request->args();
+    String temp = "";
+    if(request->hasParam("hours")){
+      AsyncWebParameter* p = request->getParam("hours");
+      hours = strtol(p->value().c_str(), NULL, 16);
+      EEPROM.write(6,hours.r);                     
+      EEPROM.write(7,hours.g);
+      EEPROM.write(8,hours.b); 
+      EEPROM.commit();
+    }
+    if(request->hasParam("minutes")){
+      AsyncWebParameter* p = request->getParam("minutes");
+      minutes = strtol(p->value().c_str(), NULL, 16);
+      EEPROM.write(3,minutes.r);                     
+      EEPROM.write(4,minutes.g);
+      EEPROM.write(5,minutes.b); 
+      EEPROM.commit();
+    }
+    if(request->hasParam("seconds")){
+      AsyncWebParameter* p = request->getParam("seconds");
+      seconds = strtol(p->value().c_str(), NULL, 16);
+      EEPROM.write(0,seconds.r);                     
+      EEPROM.write(1,seconds.g);
+      EEPROM.write(2,seconds.b); 
+      EEPROM.commit();
+      //Serial.print("Sec: ");
+      //Serial.println(p->value().c_str());
+    }
+    if(request->hasParam("lines")){
+      AsyncWebParameter* p = request->getParam("lines");
+      lines = strtol(p->value().c_str(), NULL, 16);
+      EEPROM.write(18,lines.r);                     
+      EEPROM.write(19,lines.g);
+      EEPROM.write(20,lines.b); 
+      EEPROM.commit();
+    }
+  }
+  request->send(SPIFFS, "/www/color.html", String(), false, send_color_configuration_values_html);
+  //Serial.println(__FUNCTION__); 
+}
+
