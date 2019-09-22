@@ -171,7 +171,7 @@ void handleDoUpdate(AsyncWebServerRequest *request, const String& filename, size
   }
 
   if (Update.write(data, len) != len) {
-    Update.printError(Serial);
+    //Update.printError(Serial);
 #ifdef ESP8266
   } else {
     //Serial.printf("Progress: %d%%\n", (Update.progress()*100)/Update.size());
@@ -179,15 +179,16 @@ void handleDoUpdate(AsyncWebServerRequest *request, const String& filename, size
   }
 
   if (final) {
-    AsyncWebServerResponse *response = request->beginResponse(302, "text/plain", "Please wait while the device reboots");
-    response->addHeader("Refresh", "30");  
-    response->addHeader("Location", "/update");
-    request->send(response);
     if (!Update.end(true)){
       Update.printError(Serial);
     } else {
       Serial.println("Update complete");
+      AsyncWebServerResponse *response = request->beginResponse(200, "text/plain", "Please wait while the device reboots");
+      response->addHeader("Refresh", "45");  
+      response->addHeader("Location", "/");
+      request->send(response);
       Serial.flush();
+      //delay(200);
       ESP.restart();
     }
   }
