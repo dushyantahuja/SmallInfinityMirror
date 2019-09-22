@@ -10,9 +10,6 @@
 // converted for FastLED with gammas (2.6, 2.2, 2.5)
 // Size: 16 bytes of program space.
 
-DEFINE_GRADIENT_PALETTE( plain_blue ) {
-    0, 0,  0,  255,
-  255, 0,  0,  255};
 
 DEFINE_GRADIENT_PALETTE( ib_jul01_gp ) {
     0, 194,  1,  1,

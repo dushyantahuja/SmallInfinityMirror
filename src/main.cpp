@@ -81,28 +81,36 @@ void setup() {
         request ->send_P(200,"text/html", PAGE_AdminMainPage ); 
     });
     httpServer.on("/style.css", HTTP_GET, [](AsyncWebServerRequest *request){
-        request ->send(SPIFFS, "/www/style.css" ); 
+        AsyncWebServerResponse *response = request->beginResponse(SPIFFS, "/www/style.css.gz", "text/css");
+        response->addHeader("Content-Encoding", "gzip");
+        request->send(response);
+        //request ->send(SPIFFS, "/www/style.css.gz" ); 
         //request->send(SPIFFS,"/www/style.css","text/css");
     });
     httpServer.on("/microajax.js", HTTP_GET, [](AsyncWebServerRequest *request){
-        request ->send(SPIFFS,"/www/microajax.js");
+        AsyncWebServerResponse *response = request->beginResponse(SPIFFS, "/www/microajax.js.gz", "text/plain");
+        response->addHeader("Content-Encoding", "gzip");
+        request->send(response);
+        //request ->send(SPIFFS,"/www/microajax.js.gz");
     });
     httpServer.on("/jscolor.js", HTTP_GET, [](AsyncWebServerRequest *request){
-        request ->send(SPIFFS,"/www/jscolor.js");
+        AsyncWebServerResponse *response = request->beginResponse(SPIFFS, "/www/jscolor.js.gz","text/plain");
+        response->addHeader("Content-Encoding", "gzip");
+        request->send(response);
+        //request ->send(SPIFFS,"/www/jscolor.js.gz");
     });
     httpServer.on("/clock.html", HTTP_GET, send_clock_configuration_html);
     httpServer.on("/color.html", HTTP_GET, send_color_configuration_html);
+    //httpServer.on("/pattern.html", HTTP_GET, send_pattern_configuration_html);
     httpServer.on("/admin/clockconfig", HTTP_GET, send_clock_configuration_values_html);
-    //httpServer.on("/admin/colorconfig", HTTP_GET, send_color_configuration_values_html);
+    httpServer.on("/admin/colorconfig", send_color_configuration_values_html );
     httpServer.on("/update", HTTP_GET, [](AsyncWebServerRequest *request){handleUpdate(request);});
     httpServer.on("/doUpdate", HTTP_POST,
     [](AsyncWebServerRequest *request) {},
     [](AsyncWebServerRequest *request, const String& filename, size_t index, uint8_t *data,
                   size_t len, bool final) {handleDoUpdate(request, filename, index, data, len, final);}
     );
-    //httpServer.serveStatic("/", SPIFFS, "/www/");
-    /*
-    httpServer.on ( "/admin/colorconfig", send_color_configuration_values_html );*/
+    //httpServer.serveStatic("/images/", SPIFFS, "/www/i/").setCacheControl("max-age=31536000");
     httpServer.onNotFound(handleNotFound);
     httpServer.begin();
 
@@ -110,7 +118,7 @@ void setup() {
     IPG.updateStatus();
     timeClient.setTimeOffset(IPG.getOffset()*3600);
 
-    //MDNS.addService("http", "tcp", 80);
+    MDNS.addService("http", "tcp", 80);
     timeClient.begin();
 
     EEPROM.begin(512);
@@ -154,67 +162,6 @@ void showTime(int hr, int mn, int sec) {
     LEDS.setBrightness(constrain(config.light_high,10,255));
 }
 
-/*void callback(const MQTT::Publish& pub) {
- Serial.print(pub.topic());
- Serial.print(" => ");
- Serial.println(pub.payload_string());
-
- String payload = pub.payload_string();
-  if(String(pub.topic()) == "smallinfinity/brightness"){
-    //int c1 = payload.indexOf(',');
-    int h = payload.toInt();
-    //int s = payload.substring(c1+1).toInt();
-    set_light(h,l);
-  }
-
-  if(String(pub.topic()) == "smallinfinity/hour"){
-    int c1 = payload.indexOf(',');
-    int c2 = payload.indexOf(',',c1+1);
-    int h = map(payload.toInt(),0,360,0,255);
-    int s = map(payload.substring(c1+1,c2).toInt(),0,100,0,255);
-    int v = map(payload.substring(c2+1).toInt(),0,100,0,255);
-    set_hour_hsv(h,s,v);
- }
- if(String(pub.topic()) == "smallinfinity/minute"){
-    gCurrentPaletteNumber++;
-    if (gCurrentPaletteNumber>=gGradientPaletteCount) gCurrentPaletteNumber=0;
-    gCurrentPalette = gGradientPalettes[gCurrentPaletteNumber];
-    //int c1 = payload.indexOf(',');
-    //int c2 = payload.indexOf(',',c1+1);
-    //int h = map(payload.toInt(),0,360,0,255);
-    //int s = map(payload.substring(c1+1,c2).toInt(),0,100,0,255);
-    //int v = map(payload.substring(c2+1).toInt(),0,100,0,255);
-    //set_minute_hsv(h,s,v);
- }
- if(String(pub.topic()) == "smallinfinity/second"){
-    int c1 = payload.indexOf(',');
-    int c2 = payload.indexOf(',',c1+1);
-    int h = map(payload.toInt(),0,360,0,255);
-    int s = map(payload.substring(c1+1,c2).toInt(),0,100,0,255);
-    int v = map(payload.substring(c2+1).toInt(),0,100,0,255);
-    set_second_hsv(h,s,v);
- }
- if(String(pub.topic()) == "smallinfinity/bg"){
-    int c1 = payload.indexOf(',');
-    int c2 = payload.indexOf(',',c1+1);
-    int h = map(payload.toInt(),0,360,0,255);
-    int s = map(payload.substring(c1+1,c2).toInt(),0,100,0,255);
-    int v = map(payload.substring(c2+1).toInt(),0,100,0,255);
-    set_bg_hsv(h,s,v);
- }
- if(String(pub.topic()) == "smallinfinity/effects"){
-    effects();
- }
- if(String(pub.topic()) == "smallinfinity/clockstatus"){
-    clockstatus();
- }
- if(String(pub.topic()) == "smallinfinity/reset"){
-   client.publish("smallinfinity/status","Restarting");
-   ESP.reset();
- }
-}
-*/
-
 void effects(){
   for( int j = 0; j< 300; j++){
     fadeToBlackBy( leds, NUM_LEDS, 20);
@@ -228,151 +175,6 @@ void effects(){
    }
   fill_solid(leds, NUM_LEDS, bg);
 }
-
-
-/*void set_hour_hsv(int h, int s, int v){
-  CHSV temp;
-  temp.h = h;
-  temp.s = s;
-  temp.v = v;
-  hsv2rgb_rainbow(temp,hours);
-  EEPROM.write(6,hours.r);
-  EEPROM.write(7,hours.g);
-  EEPROM.write(8,hours.b);
-  EEPROM.commit();
-  client.publish("smallinfinity/status","HOUR COLOUR SET");
-}
-
-void set_minute_hsv(int h, int s, int v){
-  CHSV temp;
-  temp.h = h;
-  temp.s = s;
-  temp.v = v;
-  hsv2rgb_rainbow(temp,minutes);
-  EEPROM.write(3,minutes.r);
-  EEPROM.write(4,minutes.g);
-  EEPROM.write(5,minutes.b);
-  EEPROM.commit();
-  client.publish("smallinfinity/status","MINUTE COLOUR SET");
-}
-
-void set_second_hsv(int h, int s, int v){
-  CHSV temp;
-  temp.h = h;
-  temp.s = s;
-  temp.v = v;
-  hsv2rgb_rainbow(temp,seconds);
-  EEPROM.write(0,seconds.r);
-  EEPROM.write(1,seconds.g);
-  EEPROM.write(2,seconds.b);
-  EEPROM.commit();
-  client.publish("smallinfinity/status","SECOND COLOUR SET");
-}
-
-void set_bg_hsv(int h, int s, int v){
-  CHSV temp;
-  temp.h = h;
-  temp.s = s;
-  temp.v = v;
-  hsv2rgb_rainbow(temp,bg);
-  EEPROM.write(9,bg.r);
-  EEPROM.write(10,bg.g);
-  EEPROM.write(11,bg.b);
-  EEPROM.commit();
-  client.publish("smallinfinity/status","BG COLOUR SET");
-  fill_solid(leds, NUM_LEDS, bg);
-}
-
-void clockstatus(){
-  String message = "Status: \n";
-  message+= "BG: " + String(bg.r) + "-" + String(bg.g) + "-" + String(bg.b) +"\n";
-  message+= "SEC: " + String(seconds.r) + "-" + String(seconds.g) + "-" + String(seconds.b) +"\n";
-  message+= "MINUTE: " + String(minutes.r) + "-" + String(minutes.g) + "-" + String(minutes.b) +"\n";
-  message+= "HOUR: " + String(hours.r) + "-" + String(hours.g) + "-" + String(hours.b) +"\n";
-  message+= "Time: " + String(hour()) + ":" + String(minute())+ ":" + String(second())+"\n";
-  client.publish("smallinfinity/status",message);
-}
-
-
-void set_light(int low, int high){
-  light_low = low;
-  light_high = high;
-  EEPROM.write(12,light_low);
-  EEPROM.write(13,light_high);
-  client.publish("smallinfinity/status","LIGHT SET");
-}
-*/
-// FastLED colorwaves
-
-void colorwaves( CRGB* ledarray, uint16_t numleds, CRGBPalette16& palette) 
-{
-  static uint16_t sPseudotime = 0;
-  static uint16_t sLastMillis = 0;
-  static uint16_t sHue16 = 0;
- 
-  //uint8_t sat8 = beatsin88( 87, 220, 250);
-  uint8_t brightdepth = beatsin88( 341, 96, 224);
-  uint16_t brightnessthetainc16 = beatsin88( 203, (25 * 256), (40 * 256));
-  uint8_t msmultiplier = beatsin88(147, 23, 60);
-
-  uint16_t hue16 = sHue16;//gHue * 256;
-  uint16_t hueinc16 = beatsin88(113, 300, 1500);
-  
-  uint16_t ms = millis();
-  uint16_t deltams = ms - sLastMillis ;
-  sLastMillis  = ms;
-  sPseudotime += deltams * msmultiplier;
-  sHue16 += deltams * beatsin88( 400, 5,9);
-  uint16_t brightnesstheta16 = sPseudotime;
-  
-  for( uint16_t i = 0 ; i < numleds; i++) {
-    hue16 += hueinc16;
-    uint8_t hue8 = hue16 / 256;
-    uint16_t h16_128 = hue16 >> 7;
-    if( h16_128 & 0x100) {
-      hue8 = 255 - (h16_128 >> 1);
-    } else {
-      hue8 = h16_128 >> 1;
-    }
-
-    brightnesstheta16  += brightnessthetainc16;
-    uint16_t b16 = sin16( brightnesstheta16  ) + 32768;
-
-    uint16_t bri16 = (uint32_t)((uint32_t)b16 * (uint32_t)b16) / 65536;
-    uint8_t bri8 = (uint32_t)(((uint32_t)bri16) * brightdepth) / 65536;
-    bri8 += (255 - brightdepth);
-    
-    uint8_t index = hue8;
-    //index = triwave8( index);
-    index = scale8( index, 240);
-
-    CRGB newcolor = ColorFromPalette( palette, index, bri8);
-
-    uint16_t pixelnumber = i;
-    pixelnumber = (numleds-1) - pixelnumber;
-    
-    nblend( ledarray[pixelnumber], newcolor, 128);
-  }
-}
-
-/*boolean reconnect() {
-    if (client.connect("smallinfinity")) {
-      // Once connected, publish an announcement...
-      client.publish("smallinfinity/status", "smallinfinity Mirror Alive - topics smallinfinity/brighness,smallinfinity/hour,smallinfinity/minute,smallinfinity/second,smallinfinity/bg,smallinfinity/effects subscribed");
-      client.publish("smallinfinity/status",ESP.getResetReason());
-      // ... and resubscribe
-      client.subscribe("smallinfinity/hour");
-      client.subscribe("smallinfinity/minute");
-      client.subscribe("smallinfinity/second");
-      client.subscribe("smallinfinity/bg");
-      client.subscribe("smallinfinity/effects");
-      client.subscribe("smallinfinity/brightness");
-      client.subscribe("smallinfinity/clockstatus");
-      client.subscribe("smallinfinity/reset");
-    }
-  return client.connected();
-}*/
-
 
 void handleNotFound(AsyncWebServerRequest *request){
   //digitalWrite(led, 1);
@@ -448,7 +250,10 @@ void send_clock_configuration_html(AsyncWebServerRequest *request)
           EEPROM.commit();
     }
   }
-  request ->send(SPIFFS, "/www/clock.html" ); 
+  AsyncWebServerResponse *response = request->beginResponse(SPIFFS, "/www/clock.html.gz", "text/html");
+  response->addHeader("Content-Encoding", "gzip");
+  request->send(response);
+  //request ->send(SPIFFS, "/www/clock.html.gz" ); 
   //Serial.println(__FUNCTION__); 
 }
 
@@ -466,8 +271,22 @@ void send_clock_configuration_values_html(AsyncWebServerRequest *request)
   //Serial.println(__FUNCTION__); 
 }
 
+void send_color_configuration_values_html(AsyncWebServerRequest *request)
+{
+	
+  long HexRGB; 
+  String values ="";
+  HexRGB = ((long)hours.r << 16) | ((long)hours.g << 8 ) | (long)hours.b;
+  values += "hours|" + (HexRGB == 0 ? "000000": String(HexRGB, HEX)) + "|input\n";
+  HexRGB = ((long)lines.r << 16) | ((long)lines.g << 8 ) | (long)lines.b;
+  values += "lines|" +  (HexRGB == 0 ? "000000": String(HexRGB, HEX)) + "|input\n";
+  values += "p" + String(config.gCurrentPaletteNumber) + "|true|chk\n";
+  request->send ( 200, "text/plain", values);
+  //Serial.println(__FUNCTION__); 
+}
 
-String send_color_configuration_values_html(const String& var)
+
+/*String send_color_configuration_values_html(const String& var)
 {
   long HexRGB; 
   String values ="";
@@ -485,14 +304,14 @@ String send_color_configuration_values_html(const String& var)
   //Serial.println(HexRGB, HEX);
   //Serial.println(__FUNCTION__); 
   return String();
-}
+}*/
 
 void send_color_configuration_html(AsyncWebServerRequest *request)
 {
   if (request->args() > 0 )  // Save Settings
   {
     //int args = request->args();
-    String temp = "";
+    //String temp = "";
     if(request->hasParam("hours")){
       AsyncWebParameter* p = request->getParam("hours");
       hours = strtol(p->value().c_str(), NULL, 16);
@@ -527,8 +346,39 @@ void send_color_configuration_html(AsyncWebServerRequest *request)
       EEPROM.write(20,lines.b); 
       EEPROM.commit();
     }
+    //String temp = "";
+    if(request->hasParam("pattern")){
+      AsyncWebParameter* p = request->getParam("pattern");
+      config.gCurrentPaletteNumber = p->value().toInt();
+      EEPROM.write(15,config.gCurrentPaletteNumber);  
+      gCurrentPalette = gGradientPalettes[config.gCurrentPaletteNumber];                   
+      EEPROM.commit();
+      //effects();
+    }
   }
-  request->send(SPIFFS, "/www/color.html", String(), false, send_color_configuration_values_html);
+  AsyncWebServerResponse *response = request->beginResponse(SPIFFS, "/www/color.html.gz", "text/html");
+  response->addHeader("Content-Encoding", "gzip");
+  request->send(response);
+  //request->send(SPIFFS, "/www/color.html.gz", String(), false, send_color_configuration_values_html);
   //Serial.println(__FUNCTION__); 
 }
 
+/*void send_pattern_configuration_html(AsyncWebServerRequest *request)
+{
+  if (request->args() > 0 )  // Save Settings
+  {
+    //int args = request->args();
+    //String temp = "";
+    if(request->hasParam("pattern")){
+      AsyncWebParameter* p = request->getParam("pattern");
+      config.gCurrentPaletteNumber = p->value().toInt();
+      EEPROM.write(15,config.gCurrentPaletteNumber);  
+      gCurrentPalette = gGradientPalettes[config.gCurrentPaletteNumber];                   
+      EEPROM.commit();
+      //effects();
+    }
+  }
+  //handleNotFound(request);
+  request->send(SPIFFS, "/www/pattern.html");
+  //Serial.println(__FUNCTION__); 
+}*/
