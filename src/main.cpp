@@ -143,19 +143,20 @@ void loop() {
 }
 
 void showTime(int hr, int mn, int sec) {
-  if(sec==0) fill_solid(leds, NUM_LEDS, bg);
+  if(mn==0) fill_solid(leds, NUM_LEDS, bg);
   if(( mn % config.rain == 0 && sec == 0)){
        effects();
     }
   colorwaves( leds, mn, gCurrentPalette);
-  leds[mn]= minutes;
   leds[hr%12*5]=hours;
   leds[hr%12*5+1]=hours;
   if(hr%12*5-1 > 0)
     leds[hr%12*5-1]=hours;
-  else leds[59]=hours; for(byte i = 0; i<60; i+=5){
+  else leds[59]=hours; 
+  for(byte i = 0; i<60; i+=5){
     leds[i]= lines;  // CRGB(20,30,0); //CRGB(64,64,50);
   }
+  leds[mn]= minutes;
   if(hr < config.switch_on || hr >= config.switch_off)
     LEDS.setBrightness(constrain(0,config.light_low,100)); // Set brightness to light_low during night - cools down LEDs and power supplies.
   else
@@ -282,6 +283,8 @@ void send_color_configuration_values_html(AsyncWebServerRequest *request)
   values += "lines|" +  (HexRGB == 0 ? "000000": String(HexRGB, HEX)) + "|input\n";
   values += "p" + String(config.gCurrentPaletteNumber) + "|true|chk\n";
   request->send ( 200, "text/plain", values);
+  HexRGB = ((long)minutes.r << 16) | ((long)minutes.g << 8 ) | (long)minutes.b;
+  values += "minutes|" + (HexRGB == 0 ? "000000": String(HexRGB, HEX)) + "|input\n";
   //Serial.println(__FUNCTION__); 
 }
 
