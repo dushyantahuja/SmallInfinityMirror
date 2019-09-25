@@ -72,7 +72,7 @@ void setup() {
       }
     Serial.println("Wifi Setup Completed");
     MDNS.begin("smallinfinityclock");
-
+    MDNS.addService("http", "tcp", 80);
 
     //httpUpdater.setup(&httpServer);
     //httpServer.on("/time", handleRoot);
