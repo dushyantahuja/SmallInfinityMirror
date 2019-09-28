@@ -3,6 +3,15 @@
 #define UPDATES_PER_SECOND 35
 #define GET_VARIABLE_NAME(Variable) (#Variable).cstr()
 
+#ifndef DEBUG_PRINT(x)
+  #ifdef DEBUG
+    #define DEBUG_PRINT(x)  Serial.println (x)
+  #else
+    #define DEBUG_PRINT(x)
+  #endif
+#endif
+
+
 // Function Definitions
 
 void handleNotFound(AsyncWebServerRequest *request);
@@ -156,7 +165,7 @@ void handleUpdate(AsyncWebServerRequest *request) {
 
 void handleDoUpdate(AsyncWebServerRequest *request, const String& filename, size_t index, uint8_t *data, size_t len, bool final) {
   if (!index){
-    Serial.println("Update");
+    DEBUG_PRINT("Update");
     size_t content_len = request->contentLength();
     // if filename includes spiffs, update the spiffs partition
     int cmd = (filename.indexOf("spiffs") > -1) ? U_SPIFFS : U_FLASH;
@@ -182,7 +191,7 @@ void handleDoUpdate(AsyncWebServerRequest *request, const String& filename, size
     if (!Update.end(true)){
       Update.printError(Serial);
     } else {
-      Serial.println("Update complete");
+      DEBUG_PRINT("Update complete");
       AsyncWebServerResponse *response = request->beginResponse(200, "text/plain", "Please wait while the device reboots");
       response->addHeader("Refresh", "45");  
       response->addHeader("Location", "/");
