@@ -3,7 +3,7 @@
 #define UPDATES_PER_SECOND 35
 #define GET_VARIABLE_NAME(Variable) (#Variable).cstr()
 
-#ifndef DEBUG_PRINT(x)
+#ifndef DEBUG_PRINT
   #ifdef DEBUG
     #define DEBUG_PRINT(x)  Serial.println (x)
   #else
