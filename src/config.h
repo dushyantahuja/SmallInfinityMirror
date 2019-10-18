@@ -193,8 +193,8 @@ void handleDoUpdate(AsyncWebServerRequest *request, const String& filename, size
     } else {
       DEBUG_PRINT("Update complete");
       AsyncWebServerResponse *response = request->beginResponse(200, "text/plain", "Please wait while the device reboots");
-      response->addHeader("Refresh", "45");  
-      response->addHeader("Location", "/");
+      response->addHeader("Refresh", "30; url=/");  
+      response->addHeader("Connection", "close");
       request->send(response);
       Serial.flush();
       //delay(200);
