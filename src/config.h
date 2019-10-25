@@ -1,6 +1,6 @@
 #define NUM_LEDS 60
 #define DATA_PIN D2
-#define UPDATES_PER_SECOND 35
+#define UPDATES_PER_SECOND 50
 #define GET_VARIABLE_NAME(Variable) (#Variable).cstr()
 
 #ifndef DEBUG_PRINT
@@ -193,7 +193,7 @@ void handleDoUpdate(AsyncWebServerRequest *request, const String& filename, size
     } else {
       DEBUG_PRINT("Update complete");
       AsyncWebServerResponse *response = request->beginResponse(200, "text/plain", "Please wait while the device reboots");
-      response->addHeader("Refresh", "30; url=/");  
+      response->addHeader("Refresh", "20;url=/");  
       response->addHeader("Connection", "close");
       request->send(response);
       Serial.flush();
