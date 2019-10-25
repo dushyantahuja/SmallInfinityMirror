@@ -10,6 +10,7 @@
 // converted for FastLED with gammas (2.6, 2.2, 2.5)
 // Size: 16 bytes of program space.
 
+
 DEFINE_GRADIENT_PALETTE( ib_jul01_gp ) {
     0, 194,  1,  1,
    94,   1, 29, 18,
