@@ -13,10 +13,14 @@
 AsyncWebServer httpServer(80);
 DNSServer dns;
 
+#define DEBUG
+
 #include <NTPClient.h>
 #include <ArduinoJson.h>
 #include <IPGeolocation.h>
 String IPGeoKey = "b294be4d4a3044d9a39ccf42a564592b";
+//#include "SimpleWeather.h"
+
 
 #define FASTLED_INTERNAL
 #define FASTLED_ESP8266_RAW_PIN_ORDER
@@ -120,6 +124,8 @@ void loop() {
     showTime(timeClient.getHours(),timeClient.getMinutes(),timeClient.getSeconds());
     FastLED.show();
     FastLED.delay(1000 / UPDATES_PER_SECOND);
+    if(timeClient.getHours() == 3 && timeClient.getMinutes() == 0 && timeClient.getSeconds() == 0)
+      ESP.restart();
     yield();
 }
 
