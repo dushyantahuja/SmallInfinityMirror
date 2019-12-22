@@ -1,4 +1,4 @@
-# SmallInfinityMirror
+# Small Infinity Mirror
 Smaller version of my Infinity Mirror - needs an ESP8266 + 144 LEDs/m WS2812B LED Strip
 
 I've had a love-love relation with clocks and LEDs. Over the years, I've made quite a few clocks, but keep coming back to the ​Infinity Mirror Clock that I first made a few years back. However, with each iteration, the results have become better and easier to use. This latest iteration has the following features:
