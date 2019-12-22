@@ -13,7 +13,7 @@
 
 
 // Function Definitions
-
+void reverseLeds();
 void handleNotFound(AsyncWebServerRequest *request);
 void colorwaves( CRGB* ledarray, uint16_t numleds, CRGBPalette16& palette);
 void effects();
@@ -50,6 +50,7 @@ uint8_t gCurrentPaletteNumber = 1;
 CRGBPalette16 gCurrentPalette( gGradientPalettes[gCurrentPaletteNumber]);
 
 CRGBArray<NUM_LEDS> leds;
+CRGB tempLEDs[NUM_LEDS];
 CRGB minutes,hours,seconds,bg,lines;
 //int light_low, light_high;
 boolean missed=0, ledState = 1,  multieffects = 0;

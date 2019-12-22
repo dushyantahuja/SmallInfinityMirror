@@ -19,7 +19,7 @@ DNSServer dns;
 #include <ArduinoJson.h>
 #include <IPGeolocation.h>
 String IPGeoKey = "b294be4d4a3044d9a39ccf42a564592b";
-#include "SimpleWeather.h"
+//#include "SimpleWeather.h"
 
 
 #define FASTLED_INTERNAL
