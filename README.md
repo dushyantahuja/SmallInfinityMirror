@@ -14,3 +14,5 @@ The electronics are really simple now:
 -- Easy to set up the wifi
 - Uses off-the-shelf photo frames to get a great finish
 - The inner portion can be made using 3D printing, laser cutting, or at a stretch even using a simple saw - since this portion is hidden, it doesn't need to be very finished 
+
+More details at https://www.instructables.com/id/Easy-Infinity-Mirror-Clock/
