@@ -51,7 +51,6 @@ void setup() {
       Serial.println("An Error has occurred while mounting SPIFFS");
       return;
     }
-    //reverseLEDs();
     Serial.println("Wifi Setup Initiated");
     WiFi.setAutoConnect(true);
     WiFi.setSleepMode(WIFI_NONE_SLEEP);
@@ -102,7 +101,7 @@ void setup() {
     IPGeolocation IPG(IPGeoKey);
     IPGeo I;
     IPG.updateStatus(&I);
-    timeClient.setTimeOffset(I.offset*3600);
+    timeClient.setTimeOffset((int)I.offset*3600);
 
     MDNS.addService("http", "tcp", 80);
     timeClient.begin();
@@ -126,6 +125,7 @@ void loop() {
     FastLED.delay(1000 / UPDATES_PER_SECOND);
     if(timeClient.getHours() == 3 && timeClient.getMinutes() == 0 && timeClient.getSeconds() == 0)
       ESP.restart();
+    MDNS.update();
     yield();
 }
 
@@ -184,20 +184,6 @@ void handleNotFound(AsyncWebServerRequest *request){
   }
   request->send(404, "text/plain", message);
 }
-
-
-/*void reverseLeds() {    // To be used if you put the LED strip the wrong way around. 
-  //uint8_t left = 0;
-  //uint8_t right = NUM_LEDS-1;
-  while (left < right) {
-    CRGB temp = leds[left];
-    leds[left++] = leds[right];
-    leds[right--] = temp;
-  }
-  for(int i=0; i< NUM_LEDS;i++)
-    led2[i]=leds[i];
-}*/
-
 
 void send_clock_configuration_html(AsyncWebServerRequest *request)
 {
