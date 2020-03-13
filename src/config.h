@@ -1,7 +1,10 @@
 #define NUM_LEDS 60
-#define DATA_PIN D2
+#define DATA_PIN 4
 #define UPDATES_PER_SECOND 50
 #define GET_VARIABLE_NAME(Variable) (#Variable).cstr()
+//#define ESPNAME "INFINITYMIRROR-0001" // Large clock at home
+//#define ESPNAME "INFINITYMIRROR-0006"   // Large clock in Ikea Frame
+#define ESPNAME "INFINITYMIRROR-0007"   // Small Black clock in Ikea Frame - 144 LEDs/m
 
 #ifndef DEBUG_PRINT
   #ifdef DEBUG
@@ -151,6 +154,18 @@ bool loadDefaults()
       config.switch_on = EEPROM.read(17);
       return true;
     }
+
+
+// Based on information from https://www.hackster.io/detox/send-esp8266-data-to-your-webpage-no-at-commands-7ebfec?f=1#code
+
+void sendIP(){
+  WiFiClient client;
+  HTTPClient http;
+  String url_ahuja = "http://ahuja.ws/esp.php?ESP=" ESPNAME "&IP="+ WiFi.localIP().toString();
+  http.begin(client, url_ahuja);
+  http.GET();
+  http.end();
+}
 
 // Code from https://github.com/lbernstone/asyncUpdate/blob/master/AsyncUpdate.ino
 

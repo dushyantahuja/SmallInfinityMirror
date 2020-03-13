@@ -8,6 +8,7 @@
 
 #include <ESPAsyncWiFiManager.h>
 #include <ESP8266mDNS.h>
+#include <ESP8266HTTPClient.h>
 #include <SPIFFSEditor.h>
 
 AsyncWebServer httpServer(80);
@@ -42,10 +43,11 @@ NTPClient timeClient(ntpUDP, "europe.pool.ntp.org", 0, 360000); //19800
 void setup() {
     // put your setup code here, to run once:
     delay(3000);
-    Serial.begin(9600);
+    //Serial.begin(9600);
     FastLED.addLeds<WS2812B, 4, GRB>(leds, 60).setCorrection(TypicalLEDStrip);
-    FastLED.setBrightness(20);
-    fill_rainbow(leds, NUM_LEDS,4);
+    FastLED.setBrightness(0);
+    fill_solid(leds, NUM_LEDS, bg);
+    //fill_rainbow(leds, NUM_LEDS,4);
     FastLED.show();
     if(!SPIFFS.begin()){
       Serial.println("An Error has occurred while mounting SPIFFS");
@@ -56,14 +58,13 @@ void setup() {
     WiFi.setSleepMode(WIFI_NONE_SLEEP);
     AsyncWiFiManager wifiManager(&httpServer,&dns);
     wifiManager.setTimeout(180);
-    if(!wifiManager.autoConnect("smallinfinityClock")) {
+    if(!wifiManager.autoConnect(ESPNAME)) {
       delay(3000);
       ESP.reset();
       delay(5000);
       }
     Serial.println("Wifi Setup Completed");
-    MDNS.begin("smallinfinityclock");
-    MDNS.addService("http", "tcp", 80);
+    sendIP();
 
     // Admin page
     httpServer.on("/", HTTP_GET, [](AsyncWebServerRequest *request){
@@ -102,7 +103,8 @@ void setup() {
     IPGeo I;
     IPG.updateStatus(&I);
     timeClient.setTimeOffset((int)I.offset*3600);
-
+    
+    MDNS.begin(ESPNAME);
     MDNS.addService("http", "tcp", 80);
     timeClient.begin();
 
@@ -249,9 +251,9 @@ void send_color_configuration_values_html(AsyncWebServerRequest *request)
   HexRGB = ((long)lines.r << 16) | ((long)lines.g << 8 ) | (long)lines.b;
   values += "lines|" +  (HexRGB == 0 ? "000000": String(HexRGB, HEX)) + "|input\n";
   values += "p" + String(config.gCurrentPaletteNumber) + "|true|chk\n";
-  request->send ( 200, "text/plain", values);
   HexRGB = ((long)minutes.r << 16) | ((long)minutes.g << 8 ) | (long)minutes.b;
   values += "minutes|" + (HexRGB == 0 ? "000000": String(HexRGB, HEX)) + "|input\n";
+  request->send ( 200, "text/plain", values);
 }
 
 
