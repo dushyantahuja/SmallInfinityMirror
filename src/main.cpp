@@ -43,7 +43,7 @@ NTPClient timeClient(ntpUDP, "europe.pool.ntp.org", 0, 360000); //19800
 void setup() {
     // put your setup code here, to run once:
     delay(3000);
-    //Serial.begin(9600);
+    Serial.begin(9600);
     FastLED.addLeds<WS2812B, 4, GRB>(leds, 60).setCorrection(TypicalLEDStrip);
     FastLED.setBrightness(0);
     fill_solid(leds, NUM_LEDS, bg);
