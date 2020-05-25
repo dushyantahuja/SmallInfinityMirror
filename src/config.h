@@ -2,9 +2,9 @@
 #define DATA_PIN 4
 #define UPDATES_PER_SECOND 50
 #define GET_VARIABLE_NAME(Variable) (#Variable).cstr()
-//#define ESPNAME "INFINITYMIRROR-0001" // Large clock at home
+#define ESPNAME "INFINITYMIRROR-0001" // Large clock at home
 //#define ESPNAME "INFINITYMIRROR-0006"   // Large clock in Ikea Frame
-#define ESPNAME "INFINITYMIRROR-0007"   // Small Black clock in Ikea Frame - 144 LEDs/m
+//#define ESPNAME "INFINITYMIRROR-0007"   // Small Black clock in Ikea Frame - 144 LEDs/m
 
 #ifndef DEBUG_PRINT
   #ifdef DEBUG
