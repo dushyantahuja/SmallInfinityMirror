@@ -9,6 +9,7 @@
 #include <ESPAsyncWiFiManager.h>
 #include <ESP8266mDNS.h>
 #include <ESP8266HTTPClient.h>
+#include <ESP8266httpUpdate.h>
 #include <SPIFFSEditor.h>
 
 AsyncWebServer httpServer(80);
@@ -29,6 +30,8 @@ String IPGeoKey = "b294be4d4a3044d9a39ccf42a564592b";
 #include "FastLED.h"
 #include "EEPROM.h"
 
+char ESPNAME[255];
+int DATA_PIN = 4;
 #include "palette.h"
 #include "config.h"
 
@@ -38,8 +41,6 @@ String IPGeoKey = "b294be4d4a3044d9a39ccf42a564592b";
 
 WiFiUDP ntpUDP;
 NTPClient timeClient(ntpUDP, "europe.pool.ntp.org", 0, 360000); //19800
-
-AsyncWiFiManager wifiManager(&httpServer, &dns);
 
 void setup()
 {
@@ -56,7 +57,32 @@ void setup()
     Serial.println("An Error has occurred while mounting SPIFFS");
     return;
   }
+  File file = SPIFFS.open("/deviceid.txt", "r");
+  if (!file)
+  {
+    Serial.println("file open failed");
+  }
+  else
+  {
+    int l = file.readBytesUntil('\n', ESPNAME, sizeof(ESPNAME));
+    ESPNAME[l] = 0;
+    Serial.println(ESPNAME);
+  }
+  file = SPIFFS.open("/pin.txt", "r");
+  if (!file)
+  {
+    Serial.println("file open failed");
+  }
+  else
+  {
+    char TEMP_STRING[255];
+    int l = file.readBytesUntil('\n', TEMP_STRING, sizeof(TEMP_STRING));
+    TEMP_STRING[l] = 0;
+    Serial.println(TEMP_STRING);
+    sscanf(TEMP_STRING, "%d", &DATA_PIN);
+  }
   Serial.println("Wifi Setup Initiated");
+  AsyncWiFiManager wifiManager(&httpServer, &dns);
   WiFi.setAutoConnect(true);
   WiFi.setSleepMode(WIFI_NONE_SLEEP);
   wifiManager.setTimeout(180);
@@ -88,7 +114,7 @@ void setup()
     response->addHeader("Content-Encoding", "gzip");
     request->send(response);
   });
-  httpServer.on("/clock.html", HTTP_GET, send_clock_configuration_html);
+  httpServer.on("/", HTTP_POST, send_clock_configuration_html);
   httpServer.on("/color.html", HTTP_GET, send_color_configuration_html);
   httpServer.on("/admin/clockconfig", HTTP_GET, send_clock_configuration_values_html);
   httpServer.on("/admin/colorconfig", send_color_configuration_values_html);
@@ -99,7 +125,14 @@ void setup()
   });
   httpServer.on("/factory", HTTP_GET, [](AsyncWebServerRequest *request) {
     request->send(200, "text/plain", "reseting wifi settings\n");
+    AsyncWiFiManager wifiManager(&httpServer, &dns);
     wifiManager.resetSettings();
+  });
+  httpServer.on("/autoupdate", HTTP_GET, [](AsyncWebServerRequest *request) {
+    AsyncWebServerResponse *response = request->beginResponse(200, "text/html", "<head><meta http-equiv=\"refresh\" content=\"120;url=/\"></head><body>Checking for updates - the display will restart automatically\n</body>");
+    //response->addHeader("Server","ESP Async Web Server");
+    autoupdate = true;
+    request->send(response);
   });
   httpServer.on("/update", HTTP_GET, [](AsyncWebServerRequest *request) { handleUpdate(request); });
   httpServer.on(
@@ -119,7 +152,6 @@ void setup()
   MDNS.begin(ESPNAME);
   MDNS.addService("http", "tcp", 80);
   timeClient.begin();
-
   EEPROM.begin(512);
 
   if (EEPROM.read(109) != 4)
@@ -137,11 +169,19 @@ void setup()
 void loop()
 {
   timeClient.update();
+  if (autoupdate)
+  {
+    checkForUpdates();
+    autoupdate = false;
+  }
   showTime(timeClient.getHours(), timeClient.getMinutes(), timeClient.getSeconds());
   FastLED.show();
   FastLED.delay(1000 / UPDATES_PER_SECOND);
   if (timeClient.getHours() == 3 && timeClient.getMinutes() == 0 && timeClient.getSeconds() == 0)
+  {
+    checkForUpdates();
     ESP.restart();
+  }
   MDNS.update();
   yield();
 }
@@ -197,6 +237,7 @@ void handleNotFound(AsyncWebServerRequest *request)
   message += "SEC: " + String(seconds.r) + "-" + String(seconds.g) + "-" + String(seconds.b) + "\n";
   message += "MINUTE: " + String(minutes.r) + "-" + String(minutes.g) + "-" + String(minutes.b) + "\n";
   message += "HOUR: " + String(hours.r) + "-" + String(hours.g) + "-" + String(hours.b) + "\n";
+  message += "Version: " + String(FW_VERSION) + "\n";
   message += "URI: ";
   message += request->url();
   message += "\nMethod: ";
@@ -217,45 +258,46 @@ void send_clock_configuration_html(AsyncWebServerRequest *request)
   if (request->args() > 0) // Save Settings
   {
     String temp = "";
-    if (request->hasParam("light_high"))
+    if (request->hasParam("light_high",true))
     {
-      AsyncWebParameter *p = request->getParam("light_high");
+      AsyncWebParameter *p = request->getParam("light_high",true);
       config.light_high = p->value().toInt();
       EEPROM.write(13, config.light_high);
       EEPROM.commit();
     }
-    if (request->hasParam("light_low"))
+    if (request->hasParam("light_low",true))
     {
-      AsyncWebParameter *p = request->getParam("light_low");
+      AsyncWebParameter *p = request->getParam("light_low",true);
       config.light_low = p->value().toInt();
       EEPROM.write(12, config.light_low);
       EEPROM.commit();
     }
-    if (request->hasParam("switch_off"))
+    if (request->hasParam("switch_off",true))
     {
-      AsyncWebParameter *p = request->getParam("switch_off");
+      AsyncWebParameter *p = request->getParam("switch_off",true);
       config.switch_off = p->value().toInt();
       EEPROM.write(16, config.switch_off);
       EEPROM.commit();
     }
-    if (request->hasParam("switch_on"))
+    if (request->hasParam("switch_on",true))
     {
-      AsyncWebParameter *p = request->getParam("switch_on");
+      AsyncWebParameter *p = request->getParam("switch_on",true);
       config.switch_on = p->value().toInt();
       EEPROM.write(17, config.switch_on);
       EEPROM.commit();
     }
-    if (request->hasParam("rain"))
+    if (request->hasParam("rain",true))
     {
-      AsyncWebParameter *p = request->getParam("rain");
+      AsyncWebParameter *p = request->getParam("rain",true);
       config.rain = p->value().toInt();
       EEPROM.write(14, config.rain);
       EEPROM.commit();
     }
   }
-  AsyncWebServerResponse *response = request->beginResponse(SPIFFS, "/www/clock.html.gz", "text/html");
-  response->addHeader("Content-Encoding", "gzip");
-  request->send(response);
+  //AsyncWebServerResponse *response = request->beginResponse(SPIFFS, "/www/clock.html.gz", "text/html");
+  //response->addHeader("Content-Encoding", "gzip");
+  //request->send(response);
+  request->redirect("/");
 }
 
 void send_clock_configuration_values_html(AsyncWebServerRequest *request)
