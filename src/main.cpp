@@ -1,10 +1,13 @@
 #include "Arduino.h"
 #include <FS.h>
+#include <LittleFS.h>
+#define SPIFFS LittleFS
 #include <ESP8266WiFi.h>
 #include <DNSServer.h>
 #include <ESPAsyncTCP.h>
 #include <ESPAsyncWebServer.h>
-#include <Updater.h>
+#include <AsyncElegantOTA.h>
+//#include <Updater.h>
 
 #include <ESPAsyncWiFiManager.h>
 #include <ESP8266mDNS.h>
@@ -20,7 +23,7 @@ DNSServer dns;
 #include <NTPClient.h>
 #include <ArduinoJson.h>
 #include <IPGeolocation.h>
-String IPGeoKey = "b294be4d4a3044d9a39ccf42a564592b";
+String IPGeoKey = "2a7b4f6d9ff14fd895eef23cc48da063";
 //#include "SimpleWeather.h"
 
 #define FASTLED_INTERNAL
@@ -40,7 +43,7 @@ int DATA_PIN = 4;
 // NTP Servers:
 
 WiFiUDP ntpUDP;
-NTPClient timeClient(ntpUDP, "europe.pool.ntp.org", 0, 360000); //19800
+NTPClient timeClient(ntpUDP, "europe.pool.ntp.org", 19800, 360000); //19800
 
 void setup()
 {
@@ -93,7 +96,6 @@ void setup()
     delay(5000);
   }
   Serial.println("Wifi Setup Completed");
-  sendIP();
 
   // Admin page
   httpServer.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
@@ -127,48 +129,61 @@ void setup()
     request->send(200, "text/plain", "reseting wifi settings\n");
     AsyncWiFiManager wifiManager(&httpServer, &dns);
     wifiManager.resetSettings();
+    EEPROM.write(109,22);
+    EEPROM.commit();
+    ESP.restart();
   });
   httpServer.on("/autoupdate", HTTP_GET, [](AsyncWebServerRequest *request) {
-    AsyncWebServerResponse *response = request->beginResponse(200, "text/html", "<head><meta http-equiv=\"refresh\" content=\"120;url=/\"></head><body>Checking for updates - the display will restart automatically\n</body>");
+    AsyncWebServerResponse *response = request->beginResponse(200, "text/html", "<head><meta http-equiv=\"refresh\" content=\"120;url=/\"></head><body>Checking for updates - the clock will restart automatically\n</body>");
     //response->addHeader("Server","ESP Async Web Server");
     autoupdate = true;
     request->send(response);
   });
-  httpServer.on("/update", HTTP_GET, [](AsyncWebServerRequest *request) { handleUpdate(request); });
+  httpServer.on("/checktime", HTTP_GET, [](AsyncWebServerRequest *request) {
+    AsyncWebServerResponse *response = request->beginResponse(200, "text/html", "<head><meta http-equiv=\"refresh\" content=\"20;url=/\"></head><body>Checking time - refreshing clock...\n</body>");
+    //response->addHeader("Server","ESP Async Web Server");
+    //IPGeolocation IPG(IPGeoKey);
+    //IPGeo I;
+    //IPG.updateStatus(&I);
+    //config.timezoneoffset = (int)(I.offset * 3600);
+    saveDefaults();
+    request->send(response);
+  });
+  AsyncElegantOTA.begin(&httpServer);
+  /*httpServer.on("/update", HTTP_GET, [](AsyncWebServerRequest *request) { handleUpdate(request); });
   httpServer.on(
       "/doUpdate", HTTP_POST,
       [](AsyncWebServerRequest *request) {},
       [](AsyncWebServerRequest *request, const String &filename, size_t index, uint8_t *data,
-         size_t len, bool final) { handleDoUpdate(request, filename, index, data, len, final); });
+         size_t len, bool final) { handleDoUpdate(request, filename, index, data, len, final); });*/
   httpServer.addHandler(new SPIFFSEditor("admin", "admin"));
   httpServer.onNotFound(handleNotFound);
   httpServer.begin();
 
-  IPGeolocation IPG(IPGeoKey);
-  IPGeo I;
-  IPG.updateStatus(&I);
-  timeClient.setTimeOffset((int)I.offset * 3600);
+  
 
   MDNS.begin(ESPNAME);
   MDNS.addService("http", "tcp", 80);
-  timeClient.begin();
+  
   EEPROM.begin(512);
-
-  if (EEPROM.read(109) != 4)
+  if (EEPROM.read(109) != 6)
     saveDefaults();
   // Else read the parameters from the EEPROM
   else
     loadDefaults();
-
+  //timeClient.setTimeOffset(config.timezoneoffset);
+  timeClient.begin();
   fill_solid(leds, NUM_LEDS, bg);
   FastLED.show();
   gCurrentPalette = gGradientPalettes[config.gCurrentPaletteNumber];
+  sendIP();
   wdt_enable(WDTO_8S);
 }
 
 void loop()
 {
   timeClient.update();
+  AsyncElegantOTA.loop();
   if (autoupdate)
   {
     checkForUpdates();
@@ -176,13 +191,19 @@ void loop()
   }
   showTime(timeClient.getHours(), timeClient.getMinutes(), timeClient.getSeconds());
   FastLED.show();
-  FastLED.delay(1000 / UPDATES_PER_SECOND);
   if (timeClient.getHours() == 3 && timeClient.getMinutes() == 0 && timeClient.getSeconds() == 0)
   {
     checkForUpdates();
+    //IPGeolocation IPG(IPGeoKey);
+    //IPGeo I;
+    //IPG.updateStatus(&I);
+    //config.timezoneoffset = (int)(I.offset * 3600);
+    //timeClient.setTimeOffset(config.timezoneoffset);
+    //saveDefaults();
     ESP.restart();
   }
   MDNS.update();
+  FastLED.delay(1000 / UPDATES_PER_SECOND);
   yield();
 }
 
@@ -231,6 +252,7 @@ void effects()
 
 void handleNotFound(AsyncWebServerRequest *request)
 {
+  String message;
   message = "Time: ";
   message += String(timeClient.getHours()) + ":" + String(timeClient.getMinutes()) + ":" + String(timeClient.getSeconds()) + "\n";
   message += "BG: " + String(bg.r) + "-" + String(bg.g) + "-" + String(bg.b) + "\n";

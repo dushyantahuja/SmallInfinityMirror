@@ -20,6 +20,7 @@ Configuration:<br>
 <hr>
 <a href="color.html" style="width:250px" class="btn btn--m btn--blue" >Choose Colors</a><br>
 <!--<a href="pattern.html" style="width:250px" class="btn btn--m btn--blue" >Choose Pattern</a><br>-->
+<a href="checktime" style="width:250px" class="btn btn--m btn--blue" >Check Time</a><br>
 <a href="update" style="width:250px" class="btn btn--m btn--blue" >Upload New Firmware</a><br>
 <a href="autoupdate" style="width:250px" class="btn btn--m btn--blue" >Check for Update</a><br>
 <script>

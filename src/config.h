@@ -2,7 +2,7 @@
 //#define DATA_PIN 4
 #define UPDATES_PER_SECOND 50
 #define GET_VARIABLE_NAME(Variable) (#Variable).cstr()
-const int FW_VERSION = 4;
+const int FW_VERSION = 9;
 const char *fwUrlBase = "http://ahuja.ws/firmware/InfinityMirror";
 //#define ESPNAME "INFINITYMIRROR-0001" // Large clock at home
 //#define ESPNAME "INFINITYMIRROR-0006"   // Large clock in Ikea Frame
@@ -59,7 +59,7 @@ CRGB minutes, hours, seconds, bg, lines;
 //int light_low, light_high;
 boolean missed = 0, ledState = 1, multieffects = 0;
 //byte  rain;
-String message;
+
 boolean autoupdate = false;
 
 struct strConfig
@@ -79,7 +79,7 @@ struct strConfig
 
 bool saveDefaults()
 {
-  { // Check if colours have been set or not
+  { 
 
     seconds.r = 0;
     seconds.g = 0;
@@ -102,6 +102,10 @@ bool saveDefaults()
     config.gCurrentPaletteNumber = 2;
     config.switch_off = 22;
     config.switch_on = 7;
+    //IPGeolocation IPG(IPGeoKey);
+    //IPGeo I;
+    //IPG.updateStatus(&I);
+    //config.timezoneoffset = (int)(I.offset * 3600);
 
     EEPROM.write(0, 0); // Seconds Colour
     EEPROM.write(1, 0);
@@ -124,7 +128,8 @@ bool saveDefaults()
     EEPROM.write(18, 64); //lines colour
     EEPROM.write(19, 64);
     EEPROM.write(20, 50);
-    EEPROM.write(109, 4);
+    EEPROM.put(25,config.timezoneoffset);
+    EEPROM.write(109, 6);
     EEPROM.commit();
   }
   return true;
@@ -153,6 +158,7 @@ bool loadDefaults()
   config.gCurrentPaletteNumber = EEPROM.read(15);
   config.switch_off = EEPROM.read(16);
   config.switch_on = EEPROM.read(17);
+  EEPROM.get(25,config.timezoneoffset);
   return true;
 }
 
@@ -162,14 +168,29 @@ void sendIP()
 {
   WiFiClient client;
   HTTPClient http;
-  String url_ahuja = "http://ahuja.ws/esp.php?ESP=" + String(ESPNAME) + "&IP=" + WiFi.localIP().toString();
+  char IPAddr[255];
+  String url_ahuja = "http://ahuja.ws/esp.php?ESP=" + String(ESPNAME) + "&IP=" + WiFi.localIP().toString() + "&VER=" + String(FW_VERSION);
   http.begin(client, url_ahuja);
   http.GET();
   http.end();
+  /*File IPfile = SPIFFS.open("/IP.txt", "r");
+  if (!IPfile)
+  {
+    Serial.println("file open failed");
+  }
+  else
+  {
+    int l = IPfile.readBytesUntil('\n', IPAddr, sizeof(IPAddr));
+    IPAddr[l] = 0;
+    Serial.println(IPAddr);
+  }*/
+  /*if(String(IPAddr) != WiFi.localIP().toString()){
+    
+  }*/
 }
 
 // Code from https://github.com/lbernstone/asyncUpdate/blob/master/AsyncUpdate.ino
-
+/*
 void handleUpdate(AsyncWebServerRequest *request)
 {
   const char *html = "<form method='POST' action='/doUpdate' enctype='multipart/form-data'><input type='file' name='update'><input type='submit' value='Update'></form>";
@@ -183,10 +204,10 @@ void handleDoUpdate(AsyncWebServerRequest *request, const String &filename, size
     DEBUG_PRINT("Update");
     size_t content_len = request->contentLength();
     // if filename includes spiffs, update the spiffs partition
-    int cmd = (filename.indexOf("spiffs") > -1) ? U_SPIFFS : U_FLASH;
+    //int cmd = (filename.indexOf("spiffs") > -1) ? U_SPIFFS : U_FLASH;
 #ifdef ESP8266
     Update.runAsync(true);
-    if (!Update.begin(content_len, cmd))
+    if (!Update.begin(content_len, U_FLASH)) //cmd))
     {
 #else
     if (!Update.begin(UPDATE_SIZE_UNKNOWN, cmd))
@@ -226,7 +247,7 @@ void handleDoUpdate(AsyncWebServerRequest *request, const String &filename, size
     }
   }
 }
-
+*/
 // FastLED colorwaves
 
 void colorwaves(CRGB *ledarray, uint16_t numleds, CRGBPalette16 &palette)
