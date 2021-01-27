@@ -168,7 +168,7 @@ void sendIP()
 {
   WiFiClient client;
   HTTPClient http;
-  char IPAddr[255];
+  //char IPAddr[255];
   String url_ahuja = "http://ahuja.ws/esp.php?ESP=" + String(ESPNAME) + "&IP=" + WiFi.localIP().toString() + "&VER=" + String(FW_VERSION);
   http.begin(client, url_ahuja);
   http.GET();
@@ -189,65 +189,7 @@ void sendIP()
   }*/
 }
 
-// Code from https://github.com/lbernstone/asyncUpdate/blob/master/AsyncUpdate.ino
-/*
-void handleUpdate(AsyncWebServerRequest *request)
-{
-  const char *html = "<form method='POST' action='/doUpdate' enctype='multipart/form-data'><input type='file' name='update'><input type='submit' value='Update'></form>";
-  request->send(200, "text/html", html);
-}
 
-void handleDoUpdate(AsyncWebServerRequest *request, const String &filename, size_t index, uint8_t *data, size_t len, bool final)
-{
-  if (!index)
-  {
-    DEBUG_PRINT("Update");
-    size_t content_len = request->contentLength();
-    // if filename includes spiffs, update the spiffs partition
-    //int cmd = (filename.indexOf("spiffs") > -1) ? U_SPIFFS : U_FLASH;
-#ifdef ESP8266
-    Update.runAsync(true);
-    if (!Update.begin(content_len, U_FLASH)) //cmd))
-    {
-#else
-    if (!Update.begin(UPDATE_SIZE_UNKNOWN, cmd))
-    {
-#endif
-      Update.printError(Serial);
-    }
-  }
-
-  if (Update.write(data, len) != len)
-  {
-    //Update.printError(Serial);
-#ifdef ESP8266
-  }
-  else
-  {
-    //Serial.printf("Progress: %d%%\n", (Update.progress()*100)/Update.size());
-#endif
-  }
-
-  if (final)
-  {
-    if (!Update.end(true))
-    {
-      Update.printError(Serial);
-    }
-    else
-    {
-      DEBUG_PRINT("Update complete");
-      AsyncWebServerResponse *response = request->beginResponse(200, "text/plain", "Please wait while the device reboots");
-      response->addHeader("Refresh", "20;url=/");
-      response->addHeader("Connection", "close");
-      request->send(response);
-      Serial.flush();
-      //delay(200);
-      ESP.restart();
-    }
-  }
-}
-*/
 // FastLED colorwaves
 
 void colorwaves(CRGB *ledarray, uint16_t numleds, CRGBPalette16 &palette)
