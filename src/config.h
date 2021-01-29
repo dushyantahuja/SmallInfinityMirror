@@ -2,7 +2,7 @@
 //#define DATA_PIN 4
 #define UPDATES_PER_SECOND 50
 #define GET_VARIABLE_NAME(Variable) (#Variable).cstr()
-const int FW_VERSION = 9;
+const int FW_VERSION = 10;
 const char *fwUrlBase = "http://ahuja.ws/firmware/InfinityMirror";
 //#define ESPNAME "INFINITYMIRROR-0001" // Large clock at home
 //#define ESPNAME "INFINITYMIRROR-0006"   // Large clock in Ikea Frame
@@ -168,7 +168,7 @@ void sendIP()
 {
   WiFiClient client;
   HTTPClient http;
-  char IPAddr[255];
+  //char IPAddr[255];
   String url_ahuja = "http://ahuja.ws/esp.php?ESP=" + String(ESPNAME) + "&IP=" + WiFi.localIP().toString() + "&VER=" + String(FW_VERSION);
   http.begin(client, url_ahuja);
   http.GET();

@@ -22,8 +22,8 @@ DNSServer dns;
 
 #include <NTPClient.h>
 #include <ArduinoJson.h>
-#include <IPGeolocation.h>
-String IPGeoKey = "2a7b4f6d9ff14fd895eef23cc48da063";
+//#include <IPGeolocation.h>
+//String IPGeoKey = "2a7b4f6d9ff14fd895eef23cc48da063";
 //#include "SimpleWeather.h"
 
 #define FASTLED_INTERNAL
@@ -86,6 +86,7 @@ void setup()
   }
   Serial.println("Wifi Setup Initiated");
   AsyncWiFiManager wifiManager(&httpServer, &dns);
+  //wifiManager.resetSettings();
   WiFi.setAutoConnect(true);
   WiFi.setSleepMode(WIFI_NONE_SLEEP);
   wifiManager.setTimeout(180);
