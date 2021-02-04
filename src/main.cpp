@@ -9,11 +9,11 @@
 #include <AsyncElegantOTA.h>
 //#include <Updater.h>
 
-#include <ESPAsyncWiFiManager.h>
-#include <ESP8266mDNS.h>
-#include <ESP8266HTTPClient.h>
-#include <ESP8266httpUpdate.h>
-#include <SPIFFSEditor.h>
+//#include <ESPAsyncWiFiManager.h>
+//#include <ESP8266mDNS.h>
+//#include <ESP8266HTTPClient.h>
+//#include <ESP8266httpUpdate.h>
+//#include <SPIFFSEditor.h>
 
 AsyncWebServer httpServer(80);
 DNSServer dns;
@@ -85,18 +85,19 @@ void setup()
     sscanf(TEMP_STRING, "%d", &DATA_PIN);
   }
   Serial.println("Wifi Setup Initiated");
-  AsyncWiFiManager wifiManager(&httpServer, &dns);
+  //AsyncWiFiManager wifiManager(&httpServer, &dns);
   //wifiManager.resetSettings();
   WiFi.setAutoConnect(true);
   WiFi.setSleepMode(WIFI_NONE_SLEEP);
-  wifiManager.setTimeout(180);
+  WiFi.begin("DUSHYANT", "ahuja987");
+  /*wifiManager.setTimeout(180);
   if (!wifiManager.autoConnect(ESPNAME))
   {
     delay(3000);
     ESP.reset();
     delay(5000);
   }
-  Serial.println("Wifi Setup Completed");
+  Serial.println("Wifi Setup Completed");*/
 
   // Admin page
   httpServer.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
@@ -128,13 +129,13 @@ void setup()
   });
   httpServer.on("/factory", HTTP_GET, [](AsyncWebServerRequest *request) {
     request->send(200, "text/plain", "reseting wifi settings\n");
-    AsyncWiFiManager wifiManager(&httpServer, &dns);
-    wifiManager.resetSettings();
+    //AsyncWiFiManager wifiManager(&httpServer, &dns);
+    //wifiManager.resetSettings();
     EEPROM.write(109,22);
     EEPROM.commit();
     ESP.restart();
   });
-  httpServer.on("/autoupdate", HTTP_GET, [](AsyncWebServerRequest *request) {
+  /*httpServer.on("/autoupdate", HTTP_GET, [](AsyncWebServerRequest *request) {
     AsyncWebServerResponse *response = request->beginResponse(200, "text/html", "<head><meta http-equiv=\"refresh\" content=\"120;url=/\"></head><body>Checking for updates - the clock will restart automatically\n</body>");
     //response->addHeader("Server","ESP Async Web Server");
     autoupdate = true;
@@ -149,7 +150,7 @@ void setup()
     //config.timezoneoffset = (int)(I.offset * 3600);
     saveDefaults();
     request->send(response);
-  });
+  });*/
   AsyncElegantOTA.begin(&httpServer);
   /*httpServer.on("/update", HTTP_GET, [](AsyncWebServerRequest *request) { handleUpdate(request); });
   httpServer.on(
@@ -157,14 +158,14 @@ void setup()
       [](AsyncWebServerRequest *request) {},
       [](AsyncWebServerRequest *request, const String &filename, size_t index, uint8_t *data,
          size_t len, bool final) { handleDoUpdate(request, filename, index, data, len, final); });*/
-  httpServer.addHandler(new SPIFFSEditor("admin", "admin"));
+  //httpServer.addHandler(new SPIFFSEditor("admin", "admin"));
   httpServer.onNotFound(handleNotFound);
   httpServer.begin();
 
   
 
-  MDNS.begin(ESPNAME);
-  MDNS.addService("http", "tcp", 80);
+  //MDNS.begin(ESPNAME);
+  //MDNS.addService("http", "tcp", 80);
   
   EEPROM.begin(512);
   if (EEPROM.read(109) != 6)
@@ -177,7 +178,7 @@ void setup()
   fill_solid(leds, NUM_LEDS, bg);
   FastLED.show();
   gCurrentPalette = gGradientPalettes[config.gCurrentPaletteNumber];
-  sendIP();
+  //sendIP();
   wdt_enable(WDTO_8S);
 }
 
@@ -187,14 +188,14 @@ void loop()
   AsyncElegantOTA.loop();
   if (autoupdate)
   {
-    checkForUpdates();
+    //checkForUpdates();
     autoupdate = false;
   }
   showTime(timeClient.getHours(), timeClient.getMinutes(), timeClient.getSeconds());
   FastLED.show();
   if (timeClient.getHours() == 3 && timeClient.getMinutes() == 0 && timeClient.getSeconds() == 0)
   {
-    checkForUpdates();
+    //checkForUpdates();
     //IPGeolocation IPG(IPGeoKey);
     //IPGeo I;
     //IPG.updateStatus(&I);
@@ -203,7 +204,7 @@ void loop()
     //saveDefaults();
     ESP.restart();
   }
-  MDNS.update();
+  //MDNS.update();
   FastLED.delay(1000 / UPDATES_PER_SECOND);
   yield();
 }

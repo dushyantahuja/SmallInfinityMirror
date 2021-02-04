@@ -164,7 +164,7 @@ bool loadDefaults()
 
 // Based on information from https://www.hackster.io/detox/send-esp8266-data-to-your-webpage-no-at-commands-7ebfec?f=1#code
 
-void sendIP()
+/*void sendIP()
 {
   WiFiClient client;
   HTTPClient http;
@@ -172,7 +172,7 @@ void sendIP()
   String url_ahuja = "http://ahuja.ws/esp.php?ESP=" + String(ESPNAME) + "&IP=" + WiFi.localIP().toString() + "&VER=" + String(FW_VERSION);
   http.begin(client, url_ahuja);
   http.GET();
-  http.end();
+  http.end();*/
   /*File IPfile = SPIFFS.open("/IP.txt", "r");
   if (!IPfile)
   {
@@ -187,7 +187,7 @@ void sendIP()
   /*if(String(IPAddr) != WiFi.localIP().toString()){
     
   }*/
-}
+//}
 
 // Code from https://github.com/lbernstone/asyncUpdate/blob/master/AsyncUpdate.ino
 /*
@@ -307,7 +307,7 @@ void colorwaves(CRGB *ledarray, uint16_t numleds, CRGBPalette16 &palette)
 
 //Modified using code from https://www.bakke.online/index.php/2017/06/02/self-updating-ota-firmware-for-esp8266/
 
-void checkForUpdates()
+/*void checkForUpdates()
 {
   //String mac = getMAC();
   String fwURL = String(fwUrlBase);
@@ -373,4 +373,4 @@ void checkForUpdates()
     }
     uhttpClient.end();
   }
-}
+}*/
