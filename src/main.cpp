@@ -7,6 +7,12 @@
 #include <ESPAsyncTCP.h>
 #include <ESPAsyncWebServer.h>
 #include <AsyncElegantOTA.h>
+
+//#include <Wire.h>
+//#include <RTCLib.h>
+
+//RTC_DS3231 rtc;
+
 //#include <Updater.h>
 
 //#include <ESPAsyncWiFiManager.h>
@@ -43,7 +49,7 @@ int DATA_PIN = 4;
 // NTP Servers:
 
 WiFiUDP ntpUDP;
-NTPClient timeClient(ntpUDP, "europe.pool.ntp.org", 19800, 360000); //19800
+NTPClient timeClient(ntpUDP, "0.asia.pool.ntp.org", 19800, 43200000); //India - 19800
 
 void setup()
 {
@@ -162,8 +168,6 @@ void setup()
   httpServer.onNotFound(handleNotFound);
   httpServer.begin();
 
-  
-
   //MDNS.begin(ESPNAME);
   //MDNS.addService("http", "tcp", 80);
   
@@ -174,7 +178,9 @@ void setup()
   else
     loadDefaults();
   //timeClient.setTimeOffset(config.timezoneoffset);
+  //rtc.begin();
   timeClient.begin();
+  timeClient.update();
   fill_solid(leds, NUM_LEDS, bg);
   FastLED.show();
   gCurrentPalette = gGradientPalettes[config.gCurrentPaletteNumber];
@@ -184,7 +190,7 @@ void setup()
 
 void loop()
 {
-  timeClient.update();
+  //timeClient.update();
   AsyncElegantOTA.loop();
   if (autoupdate)
   {
