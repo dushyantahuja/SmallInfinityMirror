@@ -2,7 +2,7 @@
 //#define DATA_PIN 4
 #define UPDATES_PER_SECOND 50
 #define GET_VARIABLE_NAME(Variable) (#Variable).cstr()
-const int FW_VERSION = 10;
+const int FW_VERSION = 11;
 const char *fwUrlBase = "http://ahuja.ws/firmware/InfinityMirror";
 //#define ESPNAME "INFINITYMIRROR-0001" // Large clock at home
 //#define ESPNAME "INFINITYMIRROR-0006"   // Large clock in Ikea Frame

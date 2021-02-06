@@ -43,7 +43,7 @@ int DATA_PIN = 4;
 // NTP Servers:
 
 WiFiUDP ntpUDP;
-NTPClient timeClient(ntpUDP, "europe.pool.ntp.org", 19800, 360000); //19800
+NTPClient timeClient(ntpUDP, "0.asia.pool.ntp.org", 19800, 43200000); //19800
 
 void setup()
 {
@@ -147,6 +147,7 @@ void setup()
     //IPGeo I;
     //IPG.updateStatus(&I);
     //config.timezoneoffset = (int)(I.offset * 3600);
+    timeClient.forceUpdate();
     saveDefaults();
     request->send(response);
   });
@@ -174,6 +175,7 @@ void setup()
     loadDefaults();
   //timeClient.setTimeOffset(config.timezoneoffset);
   timeClient.begin();
+  timeClient.update();
   fill_solid(leds, NUM_LEDS, bg);
   FastLED.show();
   gCurrentPalette = gGradientPalettes[config.gCurrentPaletteNumber];
@@ -183,7 +185,6 @@ void setup()
 
 void loop()
 {
-  timeClient.update();
   AsyncElegantOTA.loop();
   if (autoupdate)
   {
