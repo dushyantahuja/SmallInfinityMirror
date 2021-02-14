@@ -43,12 +43,12 @@ int DATA_PIN = 4;
 // NTP Servers:
 
 WiFiUDP ntpUDP;
-NTPClient timeClient(ntpUDP, "0.asia.pool.ntp.org", 19800, 43200000); //19800
+NTPClient timeClient(ntpUDP, "192.168.78.2", 19800, 43200000); //19800 0.asia.pool.ntp.org
 
 void setup()
 {
   // put your setup code here, to run once:
-  delay(3000);
+  //delay(1000);
   Serial.begin(9600);
   FastLED.addLeds<WS2812B, 4, GRB>(leds, 60).setCorrection(TypicalLEDStrip);
   FastLED.setBrightness(0);
@@ -193,15 +193,16 @@ void loop()
   }
   showTime(timeClient.getHours(), timeClient.getMinutes(), timeClient.getSeconds());
   FastLED.show();
-  if (timeClient.getHours() == 3 && timeClient.getMinutes() == 0 && timeClient.getSeconds() == 0)
+  if (timeClient.getHours() == 2 && timeClient.getMinutes() == 0 && timeClient.getSeconds() == 0)
   {
-    checkForUpdates();
+    //checkForUpdates();
     //IPGeolocation IPG(IPGeoKey);
     //IPGeo I;
     //IPG.updateStatus(&I);
     //config.timezoneoffset = (int)(I.offset * 3600);
     //timeClient.setTimeOffset(config.timezoneoffset);
     //saveDefaults();
+    timeClient.forceUpdate();
     ESP.restart();
   }
   MDNS.update();
