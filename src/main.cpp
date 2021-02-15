@@ -43,7 +43,7 @@ int DATA_PIN = 4;
 // NTP Servers:
 
 WiFiUDP ntpUDP;
-NTPClient timeClient(ntpUDP, "192.168.78.2", 19800, 43200000); //19800 0.asia.pool.ntp.org
+NTPClient timeClient(ntpUDP, "time.google.com", 19800, 4320000); //19800 0.asia.pool.ntp.org
 
 void setup()
 {
@@ -249,6 +249,7 @@ void effects()
     }
     FastLED.show();
     FastLED.delay(1000 / UPDATES_PER_SECOND);
+    yield();
   }
   fill_solid(leds, NUM_LEDS, bg);
 }
