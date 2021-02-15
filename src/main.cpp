@@ -20,7 +20,9 @@ DNSServer dns;
 
 #define DEBUG
 
-#include <NTPClient.h>
+#include <ezTime.h>
+
+//#include <NTPClient.h>
 #include <ArduinoJson.h>
 //#include <IPGeolocation.h>
 //String IPGeoKey = "2a7b4f6d9ff14fd895eef23cc48da063";
@@ -43,7 +45,7 @@ int DATA_PIN = 4;
 // NTP Servers:
 
 WiFiUDP ntpUDP;
-NTPClient timeClient(ntpUDP, "time.google.com", 19800, 4320000); //19800 0.asia.pool.ntp.org
+//NTPClient timeClient(ntpUDP, "time.google.com", 19800, 4320000); //19800 0.asia.pool.ntp.org
 
 void setup()
 {
@@ -147,7 +149,8 @@ void setup()
     //IPGeo I;
     //IPG.updateStatus(&I);
     //config.timezoneoffset = (int)(I.offset * 3600);
-    timeClient.forceUpdate();
+    //timeClient.forceUpdate();
+    updateNTP();
     saveDefaults();
     request->send(response);
   });
@@ -162,8 +165,6 @@ void setup()
   httpServer.onNotFound(handleNotFound);
   httpServer.begin();
 
-  
-
   MDNS.begin(ESPNAME);
   MDNS.addService("http", "tcp", 80);
   
@@ -174,8 +175,15 @@ void setup()
   else
     loadDefaults();
   //timeClient.setTimeOffset(config.timezoneoffset);
-  timeClient.begin();
-  timeClient.update();
+  //timeClient.begin();
+  //timeClient.update();
+  setServer("time.google.com");
+  waitForSync();
+  Timezone myTZ;
+  myTZ.setLocation(F("Asia/Kolkata"));
+  myTZ.setDefault();
+  setInterval(0);
+
   fill_solid(leds, NUM_LEDS, bg);
   FastLED.show();
   gCurrentPalette = gGradientPalettes[config.gCurrentPaletteNumber];
@@ -191,9 +199,9 @@ void loop()
     checkForUpdates();
     autoupdate = false;
   }
-  showTime(timeClient.getHours(), timeClient.getMinutes(), timeClient.getSeconds());
+  showTime(hour(), minute(), second());
   FastLED.show();
-  if (timeClient.getHours() == 2 && timeClient.getMinutes() == 0 && timeClient.getSeconds() == 0)
+  if (hour() == 2 && minute() == 0 && second() == 0)
   {
     //checkForUpdates();
     //IPGeolocation IPG(IPGeoKey);
@@ -202,7 +210,7 @@ void loop()
     //config.timezoneoffset = (int)(I.offset * 3600);
     //timeClient.setTimeOffset(config.timezoneoffset);
     //saveDefaults();
-    timeClient.forceUpdate();
+    //timeClient.forceUpdate();
     ESP.restart();
   }
   MDNS.update();
@@ -258,7 +266,8 @@ void handleNotFound(AsyncWebServerRequest *request)
 {
   String message;
   message = "Time: ";
-  message += String(timeClient.getHours()) + ":" + String(timeClient.getMinutes()) + ":" + String(timeClient.getSeconds()) + "\n";
+  //message += String(timeClient.getHours()) + ":" + String(timeClient.getMinutes()) + ":" + String(timeClient.getSeconds()) + "\n";
+  message += dateTime("l ~t~h~e jS ~o~f F Y, g:i A");
   message += "BG: " + String(bg.r) + "-" + String(bg.g) + "-" + String(bg.b) + "\n";
   message += "SEC: " + String(seconds.r) + "-" + String(seconds.g) + "-" + String(seconds.b) + "\n";
   message += "MINUTE: " + String(minutes.r) + "-" + String(minutes.g) + "-" + String(minutes.b) + "\n";
