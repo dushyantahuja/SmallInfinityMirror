@@ -266,8 +266,11 @@ void handleNotFound(AsyncWebServerRequest *request)
 {
   String message;
   message = "Time: ";
+  Timezone myTZ;
+  myTZ.setLocation(F("Asia/Kolkata"));
+  myTZ.setDefault();
   //message += String(timeClient.getHours()) + ":" + String(timeClient.getMinutes()) + ":" + String(timeClient.getSeconds()) + "\n";
-  message += dateTime("l ~t~h~e jS ~o~f F Y, g:i A");
+  message += myTZ.dateTime("l ~t~h~e jS ~o~f F Y, g:i A");
   message += "BG: " + String(bg.r) + "-" + String(bg.g) + "-" + String(bg.b) + "\n";
   message += "SEC: " + String(seconds.r) + "-" + String(seconds.g) + "-" + String(seconds.b) + "\n";
   message += "MINUTE: " + String(minutes.r) + "-" + String(minutes.g) + "-" + String(minutes.b) + "\n";
