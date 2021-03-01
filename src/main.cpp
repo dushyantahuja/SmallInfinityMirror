@@ -1,4 +1,6 @@
 #include "Arduino.h"
+
+#include "SerialDebug.h"
 #include <FS.h>
 #include <LittleFS.h>
 #define SPIFFS LittleFS
@@ -12,13 +14,13 @@
 #include <ESPAsyncWiFiManager.h>
 #include <ESP8266mDNS.h>
 #include <ESP8266HTTPClient.h>
-#include <ESP8266httpUpdate.h>
-#include <SPIFFSEditor.h>
+//#include <ESP8266httpUpdate.h>
+//#include <SPIFFSEditor.h>
 
 AsyncWebServer httpServer(80);
 DNSServer dns;
 
-#define DEBUG
+//#define DEBUG
 
 #include <NTPClient.h>
 #include <ArduinoJson.h>
@@ -28,6 +30,7 @@ DNSServer dns;
 
 #define FASTLED_INTERNAL
 #define FASTLED_ESP8266_RAW_PIN_ORDER
+//#define FASTLED_INTERRUPT_RETRY_COUNT 1
 //#define FASTLED_ESP8266_D1_PIN_ORDER
 #define FASTLED_ALLOW_INTERRUPTS 0
 #include "FastLED.h"
@@ -43,13 +46,13 @@ int DATA_PIN = 4;
 // NTP Servers:
 
 WiFiUDP ntpUDP;
-NTPClient timeClient(ntpUDP, "time.google.com", 19800, 4320000); //19800 0.asia.pool.ntp.org
+NTPClient timeClient(ntpUDP, "192.168.78.2", 19800, 4320000); //19800 0.asia.pool.ntp.org
 
 void setup()
 {
   // put your setup code here, to run once:
   //delay(1000);
-  Serial.begin(9600);
+  Serial.begin(74880);
   FastLED.addLeds<WS2812B, 4, GRB>(leds, 60).setCorrection(TypicalLEDStrip);
   FastLED.setBrightness(0);
   fill_solid(leds, NUM_LEDS, bg);
@@ -57,34 +60,34 @@ void setup()
   FastLED.show();
   if (!SPIFFS.begin())
   {
-    Serial.println("An Error has occurred while mounting SPIFFS");
+    //Serial.println("An Error has occurred while mounting SPIFFS");
     return;
   }
   File file = SPIFFS.open("/deviceid.txt", "r");
   if (!file)
   {
-    Serial.println("file open failed");
+    //Serial.println("file open failed");
   }
   else
   {
     int l = file.readBytesUntil('\n', ESPNAME, sizeof(ESPNAME));
     ESPNAME[l] = 0;
-    Serial.println(ESPNAME);
+    //Serial.println(ESPNAME);
   }
   file = SPIFFS.open("/pin.txt", "r");
   if (!file)
   {
-    Serial.println("file open failed");
+    //Serial.println("file open failed");
   }
   else
   {
     char TEMP_STRING[255];
     int l = file.readBytesUntil('\n', TEMP_STRING, sizeof(TEMP_STRING));
     TEMP_STRING[l] = 0;
-    Serial.println(TEMP_STRING);
+    //Serial.println(TEMP_STRING);
     sscanf(TEMP_STRING, "%d", &DATA_PIN);
   }
-  Serial.println("Wifi Setup Initiated");
+  //Serial.println("Wifi Setup Initiated");
   AsyncWiFiManager wifiManager(&httpServer, &dns);
   //wifiManager.resetSettings();
   WiFi.setAutoConnect(true);
@@ -96,7 +99,7 @@ void setup()
     ESP.reset();
     delay(5000);
   }
-  Serial.println("Wifi Setup Completed");
+  //Serial.println("Wifi Setup Completed");
 
   // Admin page
   httpServer.on("/", HTTP_GET, [](AsyncWebServerRequest *request) {
@@ -158,24 +161,22 @@ void setup()
       [](AsyncWebServerRequest *request) {},
       [](AsyncWebServerRequest *request, const String &filename, size_t index, uint8_t *data,
          size_t len, bool final) { handleDoUpdate(request, filename, index, data, len, final); });*/
-  httpServer.addHandler(new SPIFFSEditor("admin", "admin"));
+  //httpServer.addHandler(new SPIFFSEditor("admin", "admin"));
   httpServer.onNotFound(handleNotFound);
   httpServer.begin();
-
-  
 
   MDNS.begin(ESPNAME);
   MDNS.addService("http", "tcp", 80);
   
   EEPROM.begin(512);
-  if (EEPROM.read(109) != 6)
+  if (EEPROM.read(120) != 6)
     saveDefaults();
   // Else read the parameters from the EEPROM
   else
     loadDefaults();
   //timeClient.setTimeOffset(config.timezoneoffset);
   timeClient.begin();
-  timeClient.update();
+  timeClient.forceUpdate();
   fill_solid(leds, NUM_LEDS, bg);
   FastLED.show();
   gCurrentPalette = gGradientPalettes[config.gCurrentPaletteNumber];
@@ -186,9 +187,10 @@ void setup()
 void loop()
 {
   AsyncElegantOTA.loop();
+  debugHandle();
   if (autoupdate)
   {
-    checkForUpdates();
+    //checkForUpdates();
     autoupdate = false;
   }
   showTime(timeClient.getHours(), timeClient.getMinutes(), timeClient.getSeconds());
@@ -214,32 +216,34 @@ void showTime(int hr, int mn, int sec)
 {
   if (mn == 0)
     fill_solid(leds, NUM_LEDS, bg);
-  if ((mn % config.rain == 0 && sec == 0))
+  if ((mn % config.rain == 0 && sec <= 5))
   {
     effects();
   }
-  colorwaves(leds, mn, gCurrentPalette);
-  leds[hr % 12 * 5] = hours;
-  leds[hr % 12 * 5 + 1] = hours;
-  if (hr % 12 * 5 - 1 > 0)
-    leds[hr % 12 * 5 - 1] = hours;
-  else
-    leds[59] = hours;
-  for (byte i = 0; i < 60; i += 5)
-  {
-    leds[i] = lines;
+  else{
+    colorwaves(leds, mn, gCurrentPalette);
+    leds[hr % 12 * 5] = hours;
+    leds[hr % 12 * 5 + 1] = hours;
+    if (hr % 12 * 5 - 1 > 0)
+      leds[hr % 12 * 5 - 1] = hours;
+    else
+      leds[59] = hours;
+    for (byte i = 0; i < 60; i += 5)
+    {
+      leds[i] = lines;
+    }
+    leds[mn] = minutes;
+    if (hr < config.switch_on || hr >= config.switch_off)
+      LEDS.setBrightness(constrain(0, config.light_low, 50)); // Set brightness to light_low during night - cools down LEDs and power supplies.
+    else
+      LEDS.setBrightness(constrain(config.light_high, 10, 255));
   }
-  leds[mn] = minutes;
-  if (hr < config.switch_on || hr >= config.switch_off)
-    LEDS.setBrightness(constrain(0, config.light_low, 50)); // Set brightness to light_low during night - cools down LEDs and power supplies.
-  else
-    LEDS.setBrightness(constrain(config.light_high, 10, 255));
 }
 
 void effects()
 {
-  for (int j = 0; j < 300; j++)
-  {
+  //for (int j = 0; j < 300; j++)
+  //{
     fadeToBlackBy(leds, NUM_LEDS, 20);
     byte dothue = 0;
     for (int i = 0; i < 8; i++)
@@ -250,8 +254,9 @@ void effects()
     FastLED.show();
     FastLED.delay(1000 / UPDATES_PER_SECOND);
     yield();
-  }
-  fill_solid(leds, NUM_LEDS, bg);
+  //}
+  if(timeClient.getSeconds()>=5)
+    fill_solid(leds, NUM_LEDS, bg);
 }
 
 void handleNotFound(AsyncWebServerRequest *request)
