@@ -1,6 +1,6 @@
 #define NUM_LEDS 60
 //#define DATA_PIN 4
-#define UPDATES_PER_SECOND 40
+#define UPDATES_PER_SECOND 20
 #define GET_VARIABLE_NAME(Variable) (#Variable).cstr()
 const int FW_VERSION = 11;
 const char *fwUrlBase = "http://ahuja.ws/firmware/InfinityMirror";
@@ -129,7 +129,7 @@ bool saveDefaults()
     EEPROM.write(19, 64);
     EEPROM.write(20, 50);
     EEPROM.put(25,config.timezoneoffset);
-    EEPROM.write(109, 6);
+    EEPROM.write(120, 6);
     EEPROM.commit();
   }
   return true;
@@ -307,7 +307,7 @@ void colorwaves(CRGB *ledarray, uint16_t numleds, CRGBPalette16 &palette)
 
 //Modified using code from https://www.bakke.online/index.php/2017/06/02/self-updating-ota-firmware-for-esp8266/
 
-void checkForUpdates()
+/*void checkForUpdates()
 {
   //String mac = getMAC();
   String fwURL = String(fwUrlBase);
@@ -373,4 +373,4 @@ void checkForUpdates()
     }
     uhttpClient.end();
   }
-}
+}*/
