@@ -22,6 +22,8 @@ DNSServer dns;
 
 #include <ezTime.h>
 
+Timezone myTZ;
+
 //#include <NTPClient.h>
 #include <ArduinoJson.h>
 //#include <IPGeolocation.h>
@@ -31,6 +33,7 @@ DNSServer dns;
 #define FASTLED_INTERNAL
 #define FASTLED_ESP8266_RAW_PIN_ORDER
 //#define FASTLED_ESP8266_D1_PIN_ORDER
+//#define FASTLED_INTERRUPT_RETRY_COUNT 0
 #define FASTLED_ALLOW_INTERRUPTS 0
 #include "FastLED.h"
 #include "EEPROM.h"
@@ -87,10 +90,18 @@ void setup()
     sscanf(TEMP_STRING, "%d", &DATA_PIN);
   }
   Serial.println("Wifi Setup Initiated");
-  AsyncWiFiManager wifiManager(&httpServer, &dns);
-  //wifiManager.resetSettings();
   WiFi.setAutoConnect(true);
   WiFi.setSleepMode(WIFI_NONE_SLEEP);
+  //WiFi.begin("DUSHYANT", "ahuja987");
+  //while (WiFi.status() != WL_CONNECTED){
+  //      Serial.print(".");
+  //      delay(2000);
+  //      WiFi.begin("DUSHYANT", "ahuja987");
+  //}
+  //Serial.println(ESP.getChipId());
+  //Serial.println(WiFi.localIP());
+  AsyncWiFiManager wifiManager(&httpServer, &dns);
+  //wifiManager.resetSettings();
   wifiManager.setTimeout(180);
   if (!wifiManager.autoConnect(ESPNAME))
   {
@@ -177,9 +188,9 @@ void setup()
   //timeClient.setTimeOffset(config.timezoneoffset);
   //timeClient.begin();
   //timeClient.update();
-  setServer("time.google.com");
+  setServer("192.168.78.2");
   waitForSync();
-  Timezone myTZ;
+  
   myTZ.setLocation(F("Asia/Kolkata"));
   myTZ.setDefault();
   setInterval(0);
@@ -187,21 +198,22 @@ void setup()
   fill_solid(leds, NUM_LEDS, bg);
   FastLED.show();
   gCurrentPalette = gGradientPalettes[config.gCurrentPaletteNumber];
-  sendIP();
+  //sendIP();
   wdt_enable(WDTO_8S);
 }
 
 void loop()
 {
   AsyncElegantOTA.loop();
+  //events();
   if (autoupdate)
   {
     checkForUpdates();
     autoupdate = false;
   }
-  showTime(hour(), minute(), second());
+  showTime(myTZ.hour(), myTZ.minute(), myTZ.second());
   FastLED.show();
-  if (hour() == 2 && minute() == 0 && second() == 0)
+  if (myTZ.hour() == 2 && myTZ.minute() == 0 && myTZ.second() == 0)
   {
     //checkForUpdates();
     //IPGeolocation IPG(IPGeoKey);
@@ -266,9 +278,6 @@ void handleNotFound(AsyncWebServerRequest *request)
 {
   String message;
   message = "Time: ";
-  Timezone myTZ;
-  myTZ.setLocation(F("Asia/Kolkata"));
-  myTZ.setDefault();
   //message += String(timeClient.getHours()) + ":" + String(timeClient.getMinutes()) + ":" + String(timeClient.getSeconds()) + "\n";
   message += myTZ.dateTime("l ~t~h~e jS ~o~f F Y, g:i A");
   message += "BG: " + String(bg.r) + "-" + String(bg.g) + "-" + String(bg.b) + "\n";
