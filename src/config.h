@@ -2,7 +2,7 @@
 //#define DATA_PIN 4
 #define UPDATES_PER_SECOND 30
 #define GET_VARIABLE_NAME(Variable) (#Variable).cstr()
-const int FW_VERSION = 11;
+const int FW_VERSION = 13;
 const char *fwUrlBase = "http://ahuja.ws/firmware/InfinityMirror";
 //#define ESPNAME "INFINITYMIRROR-0001" // Large clock at home
 //#define ESPNAME "INFINITYMIRROR-0006"   // Large clock in Ikea Frame
@@ -55,7 +55,6 @@ CRGBPalette16 gCurrentPalette(gGradientPalettes[gCurrentPaletteNumber]);
 
 CRGBArray<NUM_LEDS> leds;
 //CRGB tempLEDs[NUM_LEDS];
-CRGB minutes, hours, seconds, bg, lines;
 //int light_low, light_high;
 boolean missed = 0, ledState = 1, multieffects = 0;
 //byte  rain;
@@ -64,101 +63,125 @@ boolean autoupdate = false;
 
 struct strConfig
 {
+  CRGB minutes, hours, seconds, bg, lines;
   int light_low;
   int light_high;
   int rain;
   int gCurrentPaletteNumber;
-  //String ntpServerName;
+  String ntpServerName;
   int Update_Time_Via_NTP_Every;
   int timezoneoffset;
   int autoTimezone;
   int daylight;
   int switch_off;
   int switch_on;
+
 } config;
 
 bool saveDefaults()
 {
-  { 
-
-    seconds.r = 0;
-    seconds.g = 0;
-    seconds.b = 0;
-    minutes.r = 10;
-    minutes.g = 44;
-    minutes.b = 53;
-    hours.r = 210;
-    hours.g = 45;
-    hours.b = 0;
-    bg.r = 0;
-    bg.g = 0;
-    bg.b = 0;
-    lines.r = 64;
-    lines.g = 64;
-    lines.b = 50;
-    config.light_low = 0;
-    config.light_high = 65;
-    config.rain = 30;
-    config.gCurrentPaletteNumber = 2;
-    config.switch_off = 22;
-    config.switch_on = 7;
-    //IPGeolocation IPG(IPGeoKey);
-    //IPGeo I;
-    //IPG.updateStatus(&I);
-    //config.timezoneoffset = (int)(I.offset * 3600);
-
-    EEPROM.write(0, 0); // Seconds Colour
-    EEPROM.write(1, 0);
-    EEPROM.write(2, 0);
-    EEPROM.write(3, 10); // Minutes Colour
-    EEPROM.write(4, 44);
-    EEPROM.write(5, 53);
-    EEPROM.write(6, 210); // Hours Colour
-    EEPROM.write(7, 45);
-    EEPROM.write(8, 0);
-    EEPROM.write(9, 0); // BG Colour
-    EEPROM.write(10, 0);
-    EEPROM.write(11, 0);
-    EEPROM.write(12, 0);  // Light sensitivity - low
-    EEPROM.write(13, 65); // Light sensitivity - high
-    EEPROM.write(14, 30); // Minutes for each rainbow
-    EEPROM.write(15, 2);  // Current Palette
-    EEPROM.write(16, 22); // Switch Off
-    EEPROM.write(17, 7);  // Switch On
-    EEPROM.write(18, 64); //lines colour
-    EEPROM.write(19, 64);
-    EEPROM.write(20, 50);
-    EEPROM.put(25,config.timezoneoffset);
-    EEPROM.write(109, 6);
-    EEPROM.commit();
+  DynamicJsonDocument doc(1024);
+  doc["light_low"]=config.light_low;
+  doc["light_high"]=config.light_high;
+  doc["rain"]=config.rain;
+  doc["gCurrentPaletteNumber"]=config.gCurrentPaletteNumber;
+  doc["Update_Time_Via_NTP_Every"]=config.Update_Time_Via_NTP_Every;
+  doc["timezoneoffset"]=config.timezoneoffset;
+  doc["autoTimezone"]=config.autoTimezone;
+  doc["daylight"]=config.daylight;
+  doc["switch_off"]=config.switch_off;
+  doc["switch_on"]=config.switch_on;
+  doc["ntpServerName"]=config.ntpServerName;
+  doc["seconds_r"]=(uint8_t)config.seconds.r;
+  doc["seconds_g"]=(uint8_t)config.seconds.g;
+  doc["seconds_b"]=(uint8_t)config.seconds.b;
+  doc["minutes_r"]=(uint8_t)config.minutes.r;
+  doc["minutes_g"]=(uint8_t)config.minutes.g;
+  doc["minutes_b"]=(uint8_t)config.minutes.b;
+  doc["bg_r"]=(uint8_t)config.bg.r;
+  doc["bg_g"]=(uint8_t)config.bg.g;
+  doc["bg_b"]=(uint8_t)config.bg.b;
+  doc["hours_r"]=(uint8_t)config.hours.r;
+  doc["hours_g"]=(uint8_t)config.hours.g;
+  doc["hours_b"]=(uint8_t)config.hours.b;
+  doc["lines_r"]=(uint8_t)config.lines.r;
+  doc["lines_g"]=(uint8_t)config.lines.g;
+  doc["lines_b"]=(uint8_t)config.lines.b;
+  
+  File file = LittleFS.open("config.json", "w");
+  if (!file) {
+    Serial.println("Failed to open config file for writing");
+    return false;
   }
+  serializeJson(doc, file);
+  file.close();
+  return true;
+}
+
+bool initialiseDefaults(){
+  config.seconds.r = 0;
+  config.seconds.g = 0;
+  config.seconds.b = 0;
+  config.minutes.r = 10;
+  config.minutes.g = 44;
+  config.minutes.b = 53;
+  config.hours.r = 210;
+  config.hours.g = 45;
+  config.hours.b = 0;
+  config.bg.r = 0;
+  config.bg.g = 0;
+  config.bg.b = 0;
+  config.lines.r = 64;
+  config.lines.g = 64;
+  config.lines.b = 50;
+  config.light_low = 0;
+  config.light_high = 65;
+  config.rain = 30;
+  config.gCurrentPaletteNumber = 2;
+  config.switch_off = 22;
+  config.switch_on = 7;
+  config.timezoneoffset = 5.5*3600;
+  config.Update_Time_Via_NTP_Every= 0;
+  config.ntpServerName = "time.google.com";
+  saveDefaults();
   return true;
 }
 
 bool loadDefaults()
 {
-  seconds.r = EEPROM.read(0);
-  seconds.g = EEPROM.read(1);
-  seconds.b = EEPROM.read(2);
-  minutes.r = EEPROM.read(3);
-  minutes.g = EEPROM.read(4);
-  minutes.b = EEPROM.read(5);
-  hours.r = EEPROM.read(6);
-  hours.g = EEPROM.read(7);
-  hours.b = EEPROM.read(8);
-  bg.r = EEPROM.read(9);
-  bg.g = EEPROM.read(10);
-  bg.b = EEPROM.read(11);
-  lines.r = EEPROM.read(18);
-  lines.g = EEPROM.read(19);
-  lines.b = EEPROM.read(20);
-  config.light_low = EEPROM.read(12);
-  config.light_high = EEPROM.read(13);
-  config.rain = EEPROM.read(14);
-  config.gCurrentPaletteNumber = EEPROM.read(15);
-  config.switch_off = EEPROM.read(16);
-  config.switch_on = EEPROM.read(17);
-  EEPROM.get(25,config.timezoneoffset);
+  File file = LittleFS.open("config.json", "r");
+  if (!file) {
+    Serial.println("Failed to open config file for writing");
+    return false;
+  }
+  DynamicJsonDocument doc(1024);
+  deserializeJson(doc, file);
+  config.light_low=doc["light_low"];
+  config.light_high=doc["light_high"];
+  config.rain=doc["rain"];
+  config.gCurrentPaletteNumber=doc["gCurrentPaletteNumber"];
+  config.Update_Time_Via_NTP_Every=doc["Update_Time_Via_NTP_Every"];
+  config.timezoneoffset=doc["timezoneoffset"];
+  config.autoTimezone=doc["autoTimezone"];
+  config.daylight=doc["daylight"];
+  config.switch_off=doc["switch_off"];
+  config.switch_on=doc["switch_on"];
+  config.ntpServerName=doc["ntpServerName"].as<String>();
+  config.seconds.r=(uint8_t)doc["seconds_r"];
+  config.seconds.g=(uint8_t)doc["seconds_g"];
+  config.seconds.b=(uint8_t)doc["seconds_b"];
+  config.minutes.r=(uint8_t)doc["minutes_r"];
+  config.minutes.g=(uint8_t)doc["minutes_g"];
+  config.minutes.b=(uint8_t)doc["minutes_b"];
+  config.bg.r=(uint8_t)doc["bg_r"];
+  config.bg.g=(uint8_t)doc["bg_g"];
+  config.bg.b=(uint8_t)doc["bg_b"];
+  config.hours.r=(uint8_t)doc["hours_r"];
+  config.hours.g=(uint8_t)doc["hours_g"];
+  config.hours.b=(uint8_t)doc["hours_b"];
+  config.lines.r=(uint8_t)doc["lines_r"];
+  config.lines.g=(uint8_t)doc["lines_g"];
+  config.lines.b=(uint8_t)doc["lines_b"];
   return true;
 }
 

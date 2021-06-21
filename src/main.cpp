@@ -36,10 +36,9 @@ Timezone myTZ;
 //#define FASTLED_INTERRUPT_RETRY_COUNT 0
 #define FASTLED_ALLOW_INTERRUPTS 0
 #include "FastLED.h"
-#include "EEPROM.h"
 
 char ESPNAME[255];
-int DATA_PIN = 4;
+const int DATA_PIN = 4;
 #include "palette.h"
 #include "config.h"
 
@@ -54,10 +53,11 @@ void setup()
 {
   // put your setup code here, to run once:
   //delay(1000);
-  Serial.begin(9600);
-  FastLED.addLeds<WS2812B, 4, GRB>(leds, 60).setCorrection(TypicalLEDStrip);
+  //EEPROM.begin(512);
+  Serial.begin(74880);
+  FastLED.addLeds<WS2812B, DATA_PIN, GRB>(leds, 60).setCorrection(TypicalLEDStrip);
   FastLED.setBrightness(0);
-  fill_solid(leds, NUM_LEDS, bg);
+  fill_solid(leds, NUM_LEDS, config.bg);
   //fill_rainbow(leds, NUM_LEDS,4);
   FastLED.show();
   if (!SPIFFS.begin())
@@ -76,7 +76,7 @@ void setup()
     ESPNAME[l] = 0;
     Serial.println(ESPNAME);
   }
-  file = SPIFFS.open("/pin.txt", "r");
+  /*file = SPIFFS.open("/pin.txt", "r");
   if (!file)
   {
     Serial.println("file open failed");
@@ -88,18 +88,11 @@ void setup()
     TEMP_STRING[l] = 0;
     Serial.println(TEMP_STRING);
     sscanf(TEMP_STRING, "%d", &DATA_PIN);
-  }
+  }*/
+
   Serial.println("Wifi Setup Initiated");
   WiFi.setAutoConnect(true);
   WiFi.setSleepMode(WIFI_NONE_SLEEP);
-  //WiFi.begin("DUSHYANT", "ahuja987");
-  //while (WiFi.status() != WL_CONNECTED){
-  //      Serial.print(".");
-  //      delay(2000);
-  //      WiFi.begin("DUSHYANT", "ahuja987");
-  //}
-  //Serial.println(ESP.getChipId());
-  //Serial.println(WiFi.localIP());
   AsyncWiFiManager wifiManager(&httpServer, &dns);
   //wifiManager.resetSettings();
   wifiManager.setTimeout(180);
@@ -143,8 +136,7 @@ void setup()
     request->send(200, "text/plain", "reseting wifi settings\n");
     AsyncWiFiManager wifiManager(&httpServer, &dns);
     wifiManager.resetSettings();
-    EEPROM.write(109,22);
-    EEPROM.commit();
+    LittleFS.remove("config.json");
     ESP.restart();
   });
   httpServer.on("/autoupdate", HTTP_GET, [](AsyncWebServerRequest *request) {
@@ -155,23 +147,11 @@ void setup()
   });
   httpServer.on("/checktime", HTTP_GET, [](AsyncWebServerRequest *request) {
     AsyncWebServerResponse *response = request->beginResponse(200, "text/html", "<head><meta http-equiv=\"refresh\" content=\"20;url=/\"></head><body>Checking time - refreshing clock...\n</body>");
-    //response->addHeader("Server","ESP Async Web Server");
-    //IPGeolocation IPG(IPGeoKey);
-    //IPGeo I;
-    //IPG.updateStatus(&I);
-    //config.timezoneoffset = (int)(I.offset * 3600);
-    //timeClient.forceUpdate();
     updateNTP();
     saveDefaults();
     request->send(response);
   });
   AsyncElegantOTA.begin(&httpServer);
-  /*httpServer.on("/update", HTTP_GET, [](AsyncWebServerRequest *request) { handleUpdate(request); });
-  httpServer.on(
-      "/doUpdate", HTTP_POST,
-      [](AsyncWebServerRequest *request) {},
-      [](AsyncWebServerRequest *request, const String &filename, size_t index, uint8_t *data,
-         size_t len, bool final) { handleDoUpdate(request, filename, index, data, len, final); });*/
   httpServer.addHandler(new SPIFFSEditor("admin", "admin"));
   httpServer.onNotFound(handleNotFound);
   httpServer.begin();
@@ -179,23 +159,21 @@ void setup()
   MDNS.begin(ESPNAME);
   MDNS.addService("http", "tcp", 80);
   
-  EEPROM.begin(512);
-  if (EEPROM.read(109) != 6)
-    saveDefaults();
+  File configfile = LittleFS.open("config.json", "r");
+  if (!configfile) 
+    initialiseDefaults();
   // Else read the parameters from the EEPROM
   else
     loadDefaults();
-  //timeClient.setTimeOffset(config.timezoneoffset);
-  //timeClient.begin();
-  //timeClient.update();
-  setServer("192.168.78.2");
+
+  setServer(config.ntpServerName);
   waitForSync();
   
   myTZ.setLocation(F("Asia/Kolkata"));
   myTZ.setDefault();
   setInterval(0);
 
-  fill_solid(leds, NUM_LEDS, bg);
+  fill_solid(leds, NUM_LEDS, config.bg);
   FastLED.show();
   gCurrentPalette = gGradientPalettes[config.gCurrentPaletteNumber];
   //sendIP();
@@ -215,14 +193,6 @@ void loop()
   FastLED.show();
   if (myTZ.hour() == 2 && myTZ.minute() == 0 && myTZ.second() == 0)
   {
-    //checkForUpdates();
-    //IPGeolocation IPG(IPGeoKey);
-    //IPGeo I;
-    //IPG.updateStatus(&I);
-    //config.timezoneoffset = (int)(I.offset * 3600);
-    //timeClient.setTimeOffset(config.timezoneoffset);
-    //saveDefaults();
-    //timeClient.forceUpdate();
     ESP.restart();
   }
   MDNS.update();
@@ -233,23 +203,23 @@ void loop()
 void showTime(int hr, int mn, int sec)
 {
   if (mn == 0)
-    fill_solid(leds, NUM_LEDS, bg);
+    fill_solid(leds, NUM_LEDS, config.bg);
   if ((mn % config.rain == 0 && sec == 0))
   {
     effects();
   }
   colorwaves(leds, mn, gCurrentPalette);
-  leds[hr % 12 * 5] = hours;
-  leds[hr % 12 * 5 + 1] = hours;
+  leds[hr % 12 * 5] = config.hours;
+  leds[hr % 12 * 5 + 1] = config.hours;
   if (hr % 12 * 5 - 1 > 0)
-    leds[hr % 12 * 5 - 1] = hours;
+    leds[hr % 12 * 5 - 1] = config.hours;
   else
-    leds[59] = hours;
+    leds[59] = config.hours;
   for (byte i = 0; i < 60; i += 5)
   {
-    leds[i] = lines;
+    leds[i] = config.lines;
   }
-  leds[mn] = minutes;
+  leds[mn] = config.minutes;
   if (hr < config.switch_on || hr >= config.switch_off)
     LEDS.setBrightness(constrain(0, config.light_low, 50)); // Set brightness to light_low during night - cools down LEDs and power supplies.
   else
@@ -271,7 +241,7 @@ void effects()
     FastLED.delay(1000 / UPDATES_PER_SECOND);
     yield();
   }
-  fill_solid(leds, NUM_LEDS, bg);
+  fill_solid(leds, NUM_LEDS, config.bg);
 }
 
 void handleNotFound(AsyncWebServerRequest *request)
@@ -280,10 +250,10 @@ void handleNotFound(AsyncWebServerRequest *request)
   message = "Time: ";
   //message += String(timeClient.getHours()) + ":" + String(timeClient.getMinutes()) + ":" + String(timeClient.getSeconds()) + "\n";
   message += myTZ.dateTime("l ~t~h~e jS ~o~f F Y, g:i A");
-  message += "BG: " + String(bg.r) + "-" + String(bg.g) + "-" + String(bg.b) + "\n";
-  message += "SEC: " + String(seconds.r) + "-" + String(seconds.g) + "-" + String(seconds.b) + "\n";
-  message += "MINUTE: " + String(minutes.r) + "-" + String(minutes.g) + "-" + String(minutes.b) + "\n";
-  message += "HOUR: " + String(hours.r) + "-" + String(hours.g) + "-" + String(hours.b) + "\n";
+  message += "BG: " + String(config.bg.r) + "-" + String(config.bg.g) + "-" + String(config.bg.b) + "\n";
+  message += "SEC: " + String(config.seconds.r) + "-" + String(config.seconds.g) + "-" + String(config.seconds.b) + "\n";
+  message += "MINUTE: " + String(config.minutes.r) + "-" + String(config.minutes.g) + "-" + String(config.minutes.b) + "\n";
+  message += "HOUR: " + String(config.hours.r) + "-" + String(config.hours.g) + "-" + String(config.hours.b) + "\n";
   message += "Version: " + String(FW_VERSION) + "\n";
   message += "URI: ";
   message += request->url();
@@ -309,41 +279,33 @@ void send_clock_configuration_html(AsyncWebServerRequest *request)
     {
       AsyncWebParameter *p = request->getParam("light_high",true);
       config.light_high = p->value().toInt();
-      EEPROM.write(13, config.light_high);
-      EEPROM.commit();
+      saveDefaults();
     }
     if (request->hasParam("light_low",true))
     {
       AsyncWebParameter *p = request->getParam("light_low",true);
       config.light_low = p->value().toInt();
-      EEPROM.write(12, config.light_low);
-      EEPROM.commit();
+      saveDefaults();
     }
     if (request->hasParam("switch_off",true))
     {
       AsyncWebParameter *p = request->getParam("switch_off",true);
       config.switch_off = p->value().toInt();
-      EEPROM.write(16, config.switch_off);
-      EEPROM.commit();
+      saveDefaults();
     }
     if (request->hasParam("switch_on",true))
     {
       AsyncWebParameter *p = request->getParam("switch_on",true);
       config.switch_on = p->value().toInt();
-      EEPROM.write(17, config.switch_on);
-      EEPROM.commit();
+      saveDefaults();
     }
     if (request->hasParam("rain",true))
     {
       AsyncWebParameter *p = request->getParam("rain",true);
       config.rain = p->value().toInt();
-      EEPROM.write(14, config.rain);
-      EEPROM.commit();
+      saveDefaults();
     }
   }
-  //AsyncWebServerResponse *response = request->beginResponse(SPIFFS, "/www/clock.html.gz", "text/html");
-  //response->addHeader("Content-Encoding", "gzip");
-  //request->send(response);
   request->redirect("/");
 }
 
@@ -356,6 +318,7 @@ void send_clock_configuration_values_html(AsyncWebServerRequest *request)
   values += "switch_off|" + String(config.switch_off) + "|input\n";
   values += "switch_on|" + String(config.switch_on) + "|input\n";
   values += "rain|" + String(config.rain) + "|input\n";
+  values += "currenttime|"+myTZ.dateTime("l ~t~h~e jS ~o~f F Y, g:i A")+"|input";
   request->send(200, "text/plain", values);
 }
 
@@ -364,13 +327,14 @@ void send_color_configuration_values_html(AsyncWebServerRequest *request)
 
   long HexRGB;
   String values = "";
-  HexRGB = ((long)hours.r << 16) | ((long)hours.g << 8) | (long)hours.b;
+  HexRGB = ((long)config.hours.r << 16) | ((long)config.hours.g << 8) | (long)config.hours.b;
   values += "hours|" + (HexRGB == 0 ? "000000" : String(HexRGB, HEX)) + "|input\n";
-  HexRGB = ((long)lines.r << 16) | ((long)lines.g << 8) | (long)lines.b;
+  HexRGB = ((long)config.lines.r << 16) | ((long)config.lines.g << 8) | (long)config.lines.b;
   values += "lines|" + (HexRGB == 0 ? "000000" : String(HexRGB, HEX)) + "|input\n";
   values += "p" + String(config.gCurrentPaletteNumber) + "|true|chk\n";
-  HexRGB = ((long)minutes.r << 16) | ((long)minutes.g << 8) | (long)minutes.b;
+  HexRGB = ((long)config.minutes.r << 16) | ((long)config.minutes.g << 8) | (long)config.minutes.b;
   values += "minutes|" + (HexRGB == 0 ? "000000" : String(HexRGB, HEX)) + "|input\n";
+
   request->send(200, "text/plain", values);
 }
 
@@ -381,48 +345,35 @@ void send_color_configuration_html(AsyncWebServerRequest *request)
     if (request->hasParam("hours"))
     {
       AsyncWebParameter *p = request->getParam("hours");
-      hours = strtol(p->value().c_str(), NULL, 16);
-      EEPROM.write(6, hours.r);
-      EEPROM.write(7, hours.g);
-      EEPROM.write(8, hours.b);
-      EEPROM.commit();
+      config.hours = strtol(p->value().c_str(), NULL, 16);
+      saveDefaults();
     }
     if (request->hasParam("minutes"))
     {
       AsyncWebParameter *p = request->getParam("minutes");
-      minutes = strtol(p->value().c_str(), NULL, 16);
-      EEPROM.write(3, minutes.r);
-      EEPROM.write(4, minutes.g);
-      EEPROM.write(5, minutes.b);
-      EEPROM.commit();
+      config.minutes = strtol(p->value().c_str(), NULL, 16);
+      saveDefaults();
     }
     if (request->hasParam("seconds"))
     {
       AsyncWebParameter *p = request->getParam("seconds");
-      seconds = strtol(p->value().c_str(), NULL, 16);
-      EEPROM.write(0, seconds.r);
-      EEPROM.write(1, seconds.g);
-      EEPROM.write(2, seconds.b);
-      EEPROM.commit();
+      config.seconds = strtol(p->value().c_str(), NULL, 16);
+      saveDefaults();
       DEBUG_PRINT("Sec: ");
       DEBUG_PRINT(p->value().c_str());
     }
     if (request->hasParam("lines"))
     {
       AsyncWebParameter *p = request->getParam("lines");
-      lines = strtol(p->value().c_str(), NULL, 16);
-      EEPROM.write(18, lines.r);
-      EEPROM.write(19, lines.g);
-      EEPROM.write(20, lines.b);
-      EEPROM.commit();
+      config.lines = strtol(p->value().c_str(), NULL, 16);
+      saveDefaults();
     }
     if (request->hasParam("pattern"))
     {
       AsyncWebParameter *p = request->getParam("pattern");
       config.gCurrentPaletteNumber = p->value().toInt();
-      EEPROM.write(15, config.gCurrentPaletteNumber);
       gCurrentPalette = gGradientPalettes[config.gCurrentPaletteNumber];
-      EEPROM.commit();
+      saveDefaults();
     }
   }
   AsyncWebServerResponse *response = request->beginResponse(SPIFFS, "/www/color.html.gz", "text/html");

@@ -23,6 +23,8 @@ Configuration:<br>
 <a href="checktime" style="width:250px" class="btn btn--m btn--blue" >Check Time</a><br>
 <a href="update" style="width:250px" class="btn btn--m btn--blue" >Upload New Firmware</a><br>
 <a href="autoupdate" style="width:250px" class="btn btn--m btn--blue" >Check for Update</a><br>
+<hr>
+<input type="text" id="currenttime" name ="currenttime" value="" disabled size="100">
 <script>
 window.onload = function ()
 {
