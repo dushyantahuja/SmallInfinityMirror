@@ -15,6 +15,10 @@
 #include <ESP8266httpUpdate.h>
 #include <SPIFFSEditor.h>
 
+#include <Wire.h>
+#include <RTClib.h>
+RTC_DS3231 rtc;
+
 AsyncWebServer httpServer(80);
 DNSServer dns;
 
@@ -38,7 +42,7 @@ Timezone myTZ;
 #include "FastLED.h"
 
 char ESPNAME[255];
-const int DATA_PIN = 4;
+const int DATA_PIN = 1; //1 for main infinity mirror, 4/2 for others.
 #include "palette.h"
 #include "config.h"
 
@@ -54,7 +58,13 @@ void setup()
   // put your setup code here, to run once:
   //delay(1000);
   //EEPROM.begin(512);
-  Serial.begin(74880);
+  //Serial.begin(74880);
+  Wire.begin();
+  if(!rtc.begin()) {
+        Serial.println("Couldn't find RTC!");
+        Serial.flush();
+        abort();
+    }
   FastLED.addLeds<WS2812B, DATA_PIN, GRB>(leds, 60).setCorrection(TypicalLEDStrip);
   FastLED.setBrightness(0);
   fill_solid(leds, NUM_LEDS, config.bg);
@@ -76,32 +86,18 @@ void setup()
     ESPNAME[l] = 0;
     Serial.println(ESPNAME);
   }
-  /*file = SPIFFS.open("/pin.txt", "r");
-  if (!file)
-  {
-    Serial.println("file open failed");
-  }
-  else
-  {
-    char TEMP_STRING[255];
-    int l = file.readBytesUntil('\n', TEMP_STRING, sizeof(TEMP_STRING));
-    TEMP_STRING[l] = 0;
-    Serial.println(TEMP_STRING);
-    sscanf(TEMP_STRING, "%d", &DATA_PIN);
-  }*/
-
   Serial.println("Wifi Setup Initiated");
   WiFi.setAutoConnect(true);
   WiFi.setSleepMode(WIFI_NONE_SLEEP);
-  AsyncWiFiManager wifiManager(&httpServer, &dns);
+  //AsyncWiFiManager wifiManager(&httpServer, &dns);
   //wifiManager.resetSettings();
-  wifiManager.setTimeout(180);
-  if (!wifiManager.autoConnect(ESPNAME))
+  //wifiManager.setTimeout(180);
+  /*if (!wifiManager.autoConnect(ESPNAME))
   {
     delay(3000);
     ESP.reset();
     delay(5000);
-  }
+  }*/
   Serial.println("Wifi Setup Completed");
 
   // Admin page
@@ -167,11 +163,20 @@ void setup()
     loadDefaults();
 
   setServer(config.ntpServerName);
-  waitForSync();
-  
   myTZ.setLocation(F("Asia/Kolkata"));
   myTZ.setDefault();
   setInterval(0);
+
+  if (rtc.lostPower()) {
+    Serial.println("RTC lost power, let's set the time!");
+    waitForSync();
+    // When time needs to be set on a new device, or after a power loss, the
+    // following line sets the RTC to the date & time this sketch was compiled
+    //rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
+    // This line sets the RTC with an explicit date & time, for example to set
+    // January 21, 2014 at 3am you would call:
+    rtc.adjust(DateTime(myTZ.year(), myTZ.month(), myTZ.day(), myTZ.hour(), myTZ.minute(), myTZ.second()));
+  }
 
   fill_solid(leds, NUM_LEDS, config.bg);
   FastLED.show();
@@ -189,10 +194,12 @@ void loop()
     checkForUpdates();
     autoupdate = false;
   }
-  showTime(myTZ.hour(), myTZ.minute(), myTZ.second());
+  DateTime now = rtc.now();
+  showTime(now.hour(), now.minute(), now.second());
   FastLED.show();
-  if (myTZ.hour() == 2 && myTZ.minute() == 0 && myTZ.second() == 0)
+  if (now.hour() == 2 && now.minute() == 0 && now.second() == 0)
   {
+    rtc.adjust(DateTime(myTZ.year(), myTZ.month(), myTZ.day(), myTZ.hour(), myTZ.minute(), myTZ.second()));
     ESP.restart();
   }
   MDNS.update();
