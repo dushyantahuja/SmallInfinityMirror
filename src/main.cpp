@@ -7,7 +7,6 @@
 #include <ESPAsyncTCP.h>
 #include <ESPAsyncWebServer.h>
 #include <AsyncElegantOTA.h>
-//#include <Updater.h>
 
 #include <ESPAsyncWiFiManager.h>
 #include <ESP8266mDNS.h>
@@ -18,7 +17,7 @@
 AsyncWebServer httpServer(80);
 DNSServer dns;
 
-#define DEBUG
+//#define DEBUG
 
 #include <ezTime.h>
 
@@ -29,6 +28,10 @@ Timezone myTZ;
 //#include <IPGeolocation.h>
 //String IPGeoKey = "2a7b4f6d9ff14fd895eef23cc48da063";
 //#include "SimpleWeather.h"
+
+#if __cplusplus > 199711L 
+    #define register
+#endif
 
 #define FASTLED_INTERNAL
 #define FASTLED_ESP8266_RAW_PIN_ORDER
@@ -52,7 +55,7 @@ WiFiUDP ntpUDP;
 void setup()
 {
   // put your setup code here, to run once:
-  //delay(1000);
+  delay(1000);
   //EEPROM.begin(512);
   Serial.begin(74880);
   FastLED.addLeds<WS2812B, DATA_PIN, GRB>(leds, 60).setCorrection(TypicalLEDStrip);
@@ -162,41 +165,55 @@ void setup()
   File configfile = LittleFS.open("config.json", "r");
   if (!configfile) 
     initialiseDefaults();
-  // Else read the parameters from the EEPROM
+  // Hard coded defaults in case there is no file
   else
     loadDefaults();
 
   setServer(config.ntpServerName);
+  Serial.println("Getting Time:");
+  Serial.println(config.ntpServerName);
+  /*while(!waitForSync(15)){
+    events();
+    Serial.println(myTZ.dateTime("l ~t~h~e jS ~o~f F Y, g:i A"));
+    //Serial.print(".");
+  }
+  while(!waitForSync(15)){
+    events();
+    Serial.println(myTZ.dateTime("l ~t~h~e jS ~o~f F Y, g:i A"));
+    //Serial.print(".");
+  }*/
   waitForSync();
-  
   myTZ.setLocation(F("Asia/Kolkata"));
   myTZ.setDefault();
-  setInterval(0);
+  //setInterval(0);
+  Serial.println(lastNtpUpdateTime());
 
+  Serial.println("NTP Done");
   fill_solid(leds, NUM_LEDS, config.bg);
   FastLED.show();
   gCurrentPalette = gGradientPalettes[config.gCurrentPaletteNumber];
-  //sendIP();
+  sendIP();
   wdt_enable(WDTO_8S);
+  Serial.println("Setup Done");
 }
 
 void loop()
 {
-  AsyncElegantOTA.loop();
   //events();
   if (autoupdate)
   {
     checkForUpdates();
     autoupdate = false;
   }
-  showTime(myTZ.hour(), myTZ.minute(), myTZ.second());
-  FastLED.show();
+  EVERY_N_MILLISECONDS(1000/UPDATES_PER_SECOND) { 
+    showTime(myTZ.hour(), myTZ.minute(), myTZ.second());
+    FastLED.show();
+  }
   if (myTZ.hour() == 2 && myTZ.minute() == 0 && myTZ.second() == 0)
   {
     ESP.restart();
   }
   MDNS.update();
-  FastLED.delay(1000 / UPDATES_PER_SECOND);
   yield();
 }
 
