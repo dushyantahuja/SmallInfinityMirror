@@ -20,10 +20,9 @@ DNSServer dns;
 //#define DEBUG
 
 #include <ezTime.h>
-
 Timezone myTZ;
 
-//#include <NTPClient.h>
+
 #include <ArduinoJson.h>
 //#include <IPGeolocation.h>
 //String IPGeoKey = "2a7b4f6d9ff14fd895eef23cc48da063";
