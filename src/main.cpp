@@ -40,7 +40,7 @@ Timezone myTZ;
 #include "FastLED.h"
 
 char ESPNAME[255];
-const int DATA_PIN = 4;
+const int DATA_PIN = 5;
 #include "palette.h"
 #include "config.h"
 
@@ -182,7 +182,8 @@ void setup()
     //Serial.print(".");
   }*/
   waitForSync();
-  myTZ.setLocation(F("Asia/Kolkata"));
+  myTZ.setPosix("IST-5:30");
+  // myTZ.setLocation(F("Asia/Kolkata"));
   myTZ.setDefault();
   //setInterval(0);
   Serial.println(lastNtpUpdateTime());
